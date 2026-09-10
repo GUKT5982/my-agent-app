@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests validate_pdf_sample
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -20,6 +20,11 @@ test_profile:
 
 extended_tests:
 	python -m pytest --only-extended $(TEST_FILE)
+
+# Manual/on-demand only - NOT run by `test`/`integration_tests`/CI, since a
+# full pass over the real PDF corpus is slow. See scripts/validate_pdf_extraction.py.
+validate_pdf_sample:
+	python scripts/validate_pdf_extraction.py --limit 20 --output pdf_validation_sample.json
 
 
 ######################
@@ -64,4 +69,5 @@ help:
 	@echo 'tests                        - run unit tests'
 	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
 	@echo 'test_watch                   - run unit tests in watch mode'
+	@echo 'validate_pdf_sample          - run PDF extraction against a 20-file sample'
 
