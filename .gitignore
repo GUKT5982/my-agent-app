@@ -142,8 +142,19 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+.mypy_cache_test/
 .dmypy.json
 dmypy.json
+
+# PDF extraction batch-validation reports (scripts/validate_pdf_extraction.py)
+pdf_validation_*.json
+pdf_validation_*.csv
+scripts/pdf_validation_report.*
+
+# Quote-to-form demo fixtures (regenerate with scripts/generate_form_demo.py)
+demo_quote.pdf
+demo_form.pdf
+graph_filled_form.pdf
 
 # Pyre type checker
 .pyre/
