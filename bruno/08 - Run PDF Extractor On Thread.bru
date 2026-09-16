@@ -1,0 +1,42 @@
+meta {
+  name: 08 - Run PDF Extractor On Thread
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/threads/{{threadId}}/runs/wait
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "assistant_id": "pdf_extractor",
+    "input": {
+      "pdf_base64": ""
+    }
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Run request 07 first so {{threadId}} is set.
+  
+  Same graph and (deliberately invalid, to keep the body short) input as
+  request 05, but routed through the thread created in 07 instead of an
+  ephemeral ad-hoc one. After this runs, try:
+  
+    GET {{baseUrl}}/threads/{{threadId}}/state
+  
+  to see the persisted final state sitting on the thread - that's the part
+  that's only visible once you're testing against threads, not the
+  stateless /runs/wait shortcut.
+}

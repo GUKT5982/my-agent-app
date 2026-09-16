@@ -1,0 +1,50 @@
+meta {
+  name: 04 - PDF Extractor - Extract Text Only
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/runs/wait
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "assistant_id": "pdf_extractor",
+    "input": {
+      "pdf_base64": "JVBERi0xLjcKJcK1wrYKJSBXcml0dGVuIGJ5IE11UERGIDEuMjkuMAoKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFIvSW5mbzw8L1Byb2R1Y2VyKE11UERGIDEuMjkuMCk+Pj4+CmVuZG9iagoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1s0IDAgUl0+PgplbmRvYmoKCjMgMCBvYmoKPDwvRm9udDw8L2hlbHYgNSAwIFI+Pj4+CmVuZG9iagoKNCAwIG9iago8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA4NDJdL1JvdGF0ZSAwL1Jlc291cmNlcyAzIDAgUi9QYXJlbnQgMiAwIFIvQ29udGVudHNbNiAwIFIgNyAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvRm9udC9TdWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYS9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+PgplbmRvYmoKCjYgMCBvYmoKPDwvTGVuZ3RoIDExMi9GaWx0ZXIvRmxhdGVEZWNvZGU+PgpzdHJlYW0KeNodijsKAkEQBfM+Rd/A7tc/F8RAMDFbmGwx0hkMNDDx/I5SwasHRW86NVKWiXKBq4Tbi3aP/vywKrfB28H3GXmbDIijUJH97xriC6Q8o6wcgjskl+yVOeZaxvy/tkNMDWbmFsdru9C50UpfQBsdCwplbmRzdHJlYW0KZW5kb2JqCgo3IDAgb2JqCjw8L0xlbmd0aCAxMDkvRmlsdGVyL0ZsYXRlRGVjb2RlPj4Kc3RyZWFtCnjaHco7CsMwEIThfk+xN4j2oZEDIYXBTbrAdiGFsSVSxIWbnD+W+ZqBf2inMUg4HYSLcnHl2Ojyqd8fi3A0ft0ykFHhaEVt1uQCw4p8LEPTqqnLvTsES//YtdNqyc7mg+v9HQ+agp70B1vGGxoKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDQyIDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE3MiAwMDAwMCBuIAowMDAwMDAwMjEzIDAwMDAwIG4gCjAwMDAwMDAzMjYgMDAwMDAgbiAKMDAwMDAwMDQxNSAwMDAwMCBuIAowMDAwMDAwNTk2IDAwMDAwIG4gCgp0cmFpbGVyCjw8L1NpemUgOC9Sb290IDEgMCBSL0lEWzxDM0JEQzM5QUMzQTYwNkMzOTgyNDdEQzNCQ0MyQkE3RD48RjNGQTg0RUEzOTRCMUQyQjFBQTcwNkRBQkE2QjZFRkM+XT4+CnN0YXJ0eHJlZgo3NzQKJSVFT0YK"
+    }
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Uses POST /runs/wait: a stateless, synchronous run (creates an ephemeral
+  thread internally, runs it to completion, returns the final state - no
+  need to create a thread yourself first).
+  
+  The pdf_base64 above is a tiny 1-page PDF with real embedded text (no
+  scanned image), generated with PyMuPDF, containing the lines:
+    "Hello Bruno API test - invoice no. 12345"
+    "Vendor: Acme Co.   Total: 999.00 THB"
+  
+  Since it has an embedded text layer, extract_pdf_text takes the fast path
+  (no OCR/Tesseract needed), so this works even without Ollama - verified
+  against this branch's pdf_extractor graph on 2026-09-16.
+  
+  No form_template_base64 was given, so the graph stops after extraction
+  (see the _route_after_extract branch in src/agent/pdf_graph.py) - the
+  quote-to-form steps (which need the Gemma cloud model) never run.
+  
+  Expected response shape: {pdf_base64, text, pages[], page_count,
+  ocr_page_count, embedded_text_page_count, warnings[], error: null}
+}

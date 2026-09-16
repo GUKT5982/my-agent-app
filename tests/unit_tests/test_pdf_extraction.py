@@ -64,7 +64,7 @@ _FONT_CANDIDATES = [
 ]
 
 
-def _load_test_font(size: int) -> ImageFont.BaseImageFont:
+def _load_test_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Load a real TrueType font for synthetic OCR pages.
 
     Tesseract's orientation detection (OSD) needs realistic glyph shapes to

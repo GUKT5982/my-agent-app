@@ -1,0 +1,24 @@
+meta {
+  name: 09 - Get Thread State
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/threads/{{threadId}}/state
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Run 07 then 08 first so {{threadId}} is set and has a run on it.
+  
+  Returns the thread's current persisted state (the full PdfState dataclass
+  as JSON) plus checkpoint metadata - this is what a resumable/stateful
+  client would poll or fetch instead of relying on the immediate response
+  body from the run request itself.
+}
