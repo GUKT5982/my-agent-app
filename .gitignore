@@ -156,6 +156,9 @@ demo_quote.pdf
 demo_form.pdf
 graph_filled_form.pdf
 
+# Quote-to-form result database + filled-form files (src/agent/quote_storage.py)
+/data/
+
 # Pyre type checker
 .pyre/
 

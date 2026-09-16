@@ -33,6 +33,7 @@ from agent.quote_extraction import (
     extract_quote_fields,
     quote_fields_to_form_values,
 )
+from agent.quote_storage import DEFAULT_DB_PATH, DEFAULT_FORMS_DIR, save_quote_record
 
 # Reuse the same Gemma/Ollama defaults as the chat graph (graph.py).
 DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:31b-cloud")
@@ -52,6 +53,9 @@ class PdfContext(TypedDict, total=False):
     tesseract_cmd: str
     model: str
     base_url: str
+    save_to_db: bool
+    db_path: str
+    forms_dir: str
 
 
 @dataclass
@@ -75,6 +79,9 @@ class PdfState:
     extracted_fields: Dict[str, Any] = field(default_factory=dict)
     filled_form_base64: str = ""
     fill_warnings: list[str] = field(default_factory=list)
+
+    # Set by save_record once the quote-to-form result has been persisted.
+    record_id: int | None = None
 
 
 async def extract_pdf(state: PdfState, runtime: Runtime[PdfContext]) -> Dict[str, Any]:
@@ -155,14 +162,64 @@ async def fill_form_node(
     }
 
 
+async def save_record_node(
+    state: PdfState, runtime: Runtime[PdfContext]
+) -> Dict[str, Any]:
+    """Persist the extracted quote fields (and filled form, if any) to SQLite.
+
+    Runs after fill_form, so it only fires when a form_template_base64 was
+    supplied in the first place (see _route_after_extract). A row is
+    written even if extraction failed, so failed attempts stay visible in
+    the history rather than disappearing silently. Set
+    ``context["save_to_db"] = False`` to skip persistence entirely (e.g.
+    for one-off testing you don't want cluttering the database).
+    """
+    context = runtime.context or {}
+    if context.get("save_to_db", True) is False:
+        return {}
+
+    fields = QuoteFields(
+        vendor_name=state.extracted_fields.get("vendor_name", ""),
+        quote_no=state.extracted_fields.get("quote_no", ""),
+        quote_date=state.extracted_fields.get("quote_date", ""),
+        buyer_name=state.extracted_fields.get("buyer_name", ""),
+        items=[QuoteItem(**item) for item in state.extracted_fields.get("items", [])],
+        subtotal=state.extracted_fields.get("subtotal", ""),
+        vat=state.extracted_fields.get("vat", ""),
+        grand_total=state.extracted_fields.get("grand_total", ""),
+        error=state.extracted_fields.get("error"),
+    )
+
+    filled_form_bytes: bytes | None = None
+    if state.filled_form_base64:
+        try:
+            filled_form_bytes = base64.b64decode(
+                state.filled_form_base64, validate=True
+            )
+        except (binascii.Error, ValueError):
+            filled_form_bytes = None
+
+    record_id = await asyncio.to_thread(
+        save_quote_record,
+        fields,
+        fill_warnings=state.fill_warnings,
+        filled_form_bytes=filled_form_bytes,
+        db_path=context.get("db_path", DEFAULT_DB_PATH),
+        forms_dir=context.get("forms_dir", DEFAULT_FORMS_DIR),
+    )
+    return {"record_id": record_id}
+
+
 # Define the graph
 graph = (
     StateGraph(PdfState, context_schema=PdfContext)
     .add_node(extract_pdf)
     .add_node("extract_quote_fields", extract_quote_fields_node)
     .add_node("fill_form", fill_form_node)
+    .add_node("save_record", save_record_node)
     .add_edge("__start__", "extract_pdf")
     .add_conditional_edges("extract_pdf", _route_after_extract)
     .add_edge("extract_quote_fields", "fill_form")
+    .add_edge("fill_form", "save_record")
     .compile(name="PDF Extraction Graph")
 )
