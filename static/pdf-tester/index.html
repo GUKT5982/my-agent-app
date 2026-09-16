@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PDF Extraction &amp; Quote-to-Form Tester</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: light; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  p.sub { color: #666; margin-top: 0; }
+  fieldset {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    background: #fff;
+  }
+  legend { font-weight: 600; padding: 0 0.4rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+  input[type="text"], input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  button {
+    margin-top: 1rem;
+    padding: 0.55rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  #status {
+    display: inline-block;
+    margin-left: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  #status[data-state="idle"] { color: #666; }
+  #status[data-state="running"] { color: #b45309; }
+  #status[data-state="ok"] { color: #15803d; }
+  #status[data-state="error"] { color: #b91c1c; }
+  section.result { margin-top: 1.5rem; }
+  h2 { font-size: 1.05rem; margin-bottom: 0.4rem; }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    max-height: 320px;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 0.4rem; }
+  th, td { border: 1px solid #ddd; padding: 0.35rem 0.5rem; text-align: left; }
+  th { background: #f1f5f9; }
+  ul.warnings { color: #b45309; font-size: 0.85rem; }
+  #errorBox {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    white-space: pre-wrap;
+  }
+  #downloadFilledForm {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    background: #15803d;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  #downloadFilledForm[hidden] { display: none; }
+
+  #fieldsSection {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-top: 0.5rem;
+  }
+  #fieldsErrorNote {
+    display: none;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 0.6rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 0.85rem;
+    white-space: pre-wrap;
+  }
+  #viewFormLink {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #2563eb;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <h1>PDF Extraction &amp; Quote-to-Form Tester</h1>
+  <p class="sub">
+    Manual/browser UI for the <code>pdf_extractor</code> LangGraph graph.
+    Runs a <code>POST /runs/wait</code> against a local <code>langgraph dev</code>
+    server. Provide a quote PDF to extract text; add a fillable form template
+    PDF to also run quote-field extraction and auto-fill.
+  </p>
+
+  <fieldset>
+    <legend>Server</legend>
+    <label for="baseUrl">LangGraph server base URL</label>
+    <input type="text" id="baseUrl" value="http://localhost:2024" />
+  </fieldset>
+
+  <fieldset>
+    <legend>Input</legend>
+    <label for="quoteFile">Quote PDF (required)</label>
+    <input type="file" id="quoteFile" accept="application/pdf" />
+
+    <label for="formFile">Form template PDF (optional — enables quote-to-form auto-fill)</label>
+    <input type="file" id="formFile" accept="application/pdf" />
+
+    <button id="runBtn" type="button">Run extraction</button>
+    <span id="status" data-state="idle">idle</span>
+  </fieldset>
+
+  <div id="errorBox"></div>
+
+  <section class="result" id="resultSection" hidden>
+    <h2>Extraction summary</h2>
+    <table>
+      <tbody>
+        <tr><th>Pages</th><td id="pageCount"></td></tr>
+        <tr><th>Embedded-text pages</th><td id="embeddedPageCount"></td></tr>
+        <tr><th>OCR pages</th><td id="ocrPageCount"></td></tr>
+        <tr><th>Record ID</th><td id="recordId"></td></tr>
+      </tbody>
+    </table>
+    <ul class="warnings" id="warningsList"></ul>
+
+    <h2>Extracted text</h2>
+    <pre id="extractedText"></pre>
+
+    <div id="fieldsSection" hidden>
+      <h2>Quote-to-form result</h2>
+      <div id="fieldsErrorNote"></div>
+      <p>
+        The extracted fields were used to auto-fill the form template on a
+        separate results page.
+      </p>
+      <a id="viewFormLink" href="form-result.html">View auto-filled form &rarr;</a>
+    </div>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const baseUrlInput = $("baseUrl");
+    const quoteFileInput = $("quoteFile");
+    const formFileInput = $("formFile");
+    const runBtn = $("runBtn");
+    const statusEl = $("status");
+    const errorBox = $("errorBox");
+    const resultSection = $("resultSection");
+    const fieldsSection = $("fieldsSection");
+
+    const BASE_URL_STORAGE_KEY = "pdf-tester:baseUrl";
+    const RESULT_STORAGE_KEY = "pdf-tester:lastResult";
+    try {
+      const saved = localStorage.getItem(BASE_URL_STORAGE_KEY);
+      if (saved) baseUrlInput.value = saved;
+    } catch (_) {
+      /* private browsing / storage blocked - fall back to the default value */
+    }
+
+    function setStatus(state, text) {
+      statusEl.dataset.state = state;
+      statusEl.textContent = text;
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          resolve(result.slice(result.indexOf(",") + 1));
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+    }
+
+    function clearError() {
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+    }
+
+    async function runExtraction() {
+      clearError();
+      resultSection.hidden = true;
+      fieldsSection.hidden = true;
+
+      const quoteFile = quoteFileInput.files[0];
+      if (!quoteFile) {
+        showError("Choose a quote PDF first.");
+        return;
+      }
+
+      const baseUrl = baseUrlInput.value.trim().replace(/\/$/, "");
+      try {
+        localStorage.setItem(BASE_URL_STORAGE_KEY, baseUrl);
+      } catch (_) {
+        /* ignore storage failures */
+      }
+
+      runBtn.disabled = true;
+      setStatus("running", "running...");
+
+      try {
+        const pdf_base64 = await fileToBase64(quoteFile);
+        const input = { pdf_base64 };
+
+        const formFile = formFileInput.files[0];
+        if (formFile) {
+          input.form_template_base64 = await fileToBase64(formFile);
+        }
+
+        const res = await fetch(`${baseUrl}/runs/wait`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assistant_id: "pdf_extractor", input }),
+        });
+
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status}: ${body}`);
+        }
+
+        const data = await res.json();
+        renderResult(data, Boolean(formFile));
+        setStatus(data.error ? "error" : "ok", data.error ? "extraction error" : "done");
+      } catch (err) {
+        setStatus("error", "request failed");
+        showError(err && err.message ? err.message : String(err));
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+
+    function renderResult(data, ranFormFill) {
+      resultSection.hidden = false;
+
+      $("pageCount").textContent = data.page_count ?? 0;
+      $("embeddedPageCount").textContent = data.embedded_text_page_count ?? 0;
+      $("ocrPageCount").textContent = data.ocr_page_count ?? 0;
+      $("recordId").textContent = data.record_id ?? "(not saved)";
+
+      const warningsList = $("warningsList");
+      warningsList.innerHTML = "";
+      for (const w of data.warnings || []) {
+        const li = document.createElement("li");
+        li.textContent = w;
+        warningsList.appendChild(li);
+      }
+
+      $("extractedText").textContent = data.error ? `[error] ${data.error}` : (data.text || "(empty)");
+
+      if (ranFormFill) {
+        fieldsSection.hidden = false;
+        const fields = data.extracted_fields || {};
+
+        const errorNote = $("fieldsErrorNote");
+        if (fields.error) {
+          errorNote.textContent = `Quote-field extraction did not complete, so the auto-filled form will be blank: ${fields.error}`;
+          errorNote.style.display = "block";
+        } else {
+          errorNote.style.display = "none";
+        }
+
+        // The intake-form view lives on a separate page (form-result.html)
+        // so it can be looked at on its own, without the setup/JSON
+        // clutter above it. Hand it the result via localStorage (same
+        // origin, so the next navigation can read it straight back).
+        try {
+          localStorage.setItem(
+            RESULT_STORAGE_KEY,
+            JSON.stringify({
+              extracted_fields: fields,
+              fill_warnings: data.fill_warnings || [],
+              filled_form_base64: data.filled_form_base64 || "",
+            }),
+          );
+        } catch (_) {
+          /* private browsing / storage blocked - the link below will just
+             show the "no result yet" empty state instead */
+        }
+      }
+    }
+
+    runBtn.addEventListener("click", runExtraction);
+  </script>
+</body>
+</html>
