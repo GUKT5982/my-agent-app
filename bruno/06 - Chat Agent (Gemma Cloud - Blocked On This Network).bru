@@ -1,0 +1,55 @@
+meta {
+  name: 06 - Chat Agent (Gemma Cloud - Blocked On This Network)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/runs/wait
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "assistant_id": "agent",
+    "input": {
+      "changeme": "Say hello in one word"
+    }
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  The "agent" graph (src/agent/graph.py) sends the input to Ollama's
+  gemma4:31b-cloud model. On this machine, outbound TLS to ollama.com fails
+  (corporate network - confirmed with curl -v: SEC_E_ILLEGAL_MESSAGE during
+  the TLS handshake), so cloud models can't be reached.
+  
+  Verified response on this network (2026-09-16), HTTP 200 but with a
+  run-level error payload instead of a real reply:
+  
+    {
+      "__error__": {
+        "error": "ResponseError",
+        "message": "An internal error occurred"
+      }
+    }
+  
+  Good example of why testing via a raw API client matters: LangGraph
+  Studio's chat UI would just show a generic failure, but here you see the
+  exact shape LangGraph Server uses to report a node exception (top-level
+  "__error__" key) rather than an HTTP 4xx/5xx.
+  
+  This will start working once either:
+    - the network/proxy allows TLS to ollama.com, or
+    - you point `context.model` / OLLAMA_MODEL at a model that's already
+      pulled locally (e.g. "llama3:latest"), which doesn't need ollama.com.
+}

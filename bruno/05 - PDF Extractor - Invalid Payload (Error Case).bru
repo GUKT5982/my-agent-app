@@ -1,0 +1,51 @@
+meta {
+  name: 05 - PDF Extractor - Invalid Payload (Error Case)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/runs/wait
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "assistant_id": "pdf_extractor",
+    "input": {
+      "pdf_base64": ""
+    }
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Worth testing on purpose: what does this API do with bad/empty input?
+  
+  src/agent/pdf_extraction.py is written to never raise - a decode/parse
+  failure comes back as a normal 200 response with the `error` field set,
+  not an HTTP error. Verified response for this exact payload:
+  
+    {
+      "pdf_base64": "",
+      "text": "",
+      "pages": [],
+      "page_count": 0,
+      "ocr_page_count": 0,
+      "embedded_text_page_count": 0,
+      "warnings": [],
+      "error": "Could not open file: not a valid PDF"
+    }
+  
+  This is the kind of thing that's easy to miss testing only through
+  LangGraph Studio's UI, but jumps out immediately when you inspect the raw
+  HTTP response in an API client.
+}
