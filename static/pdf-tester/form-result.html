@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Auto-filled Quotation Form</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: light; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  a.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: #2563eb;
+    text-decoration: none;
+  }
+  a.back-link:hover { text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #ddd; padding: 0.35rem 0.5rem; text-align: left; }
+  th { background: #f1f5f9; }
+  ul.warnings { color: #b45309; font-size: 0.85rem; }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    max-height: 320px;
+  }
+
+  .intake-form {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 0.5rem;
+  }
+  .intake-form h3 {
+    font-size: 1rem;
+    text-align: center;
+    margin: 0 0 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid #1a1a1a;
+  }
+  .intake-form .field-row { margin-bottom: 0.85rem; }
+  .intake-form .field-row label {
+    display: block;
+    margin: 0 0 0.2rem;
+    font-weight: 600;
+    color: #444;
+    font-size: 0.85rem;
+  }
+  .intake-form input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: #eef2ff;
+    color: #1e1b4b;
+  }
+  #itemsTable input[readonly] { border: none; background: transparent; padding: 0.2rem; width: 100%; box-sizing: border-box; }
+  #itemsTable td { padding: 0.25rem; }
+  .totals-row { display: flex; justify-content: flex-end; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+  .totals-row label { margin: 0; font-weight: 600; color: #444; white-space: nowrap; font-size: 0.85rem; }
+  .totals-row input { max-width: 160px; }
+
+  #fieldsErrorNote {
+    display: none;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 0.6rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 0.85rem;
+    white-space: pre-wrap;
+  }
+  #emptyState {
+    display: none;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    color: #666;
+  }
+  #downloadFilledForm {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.4rem 0.9rem;
+    background: #15803d;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  #downloadFilledForm[hidden] { display: none; }
+  details.raw-json { margin-top: 0.85rem; }
+  details.raw-json summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
+  }
+</style>
+</head>
+<body>
+  <a class="back-link" href="index.html">&larr; Back to tester</a>
+  <h1>Auto-filled Quotation Form</h1>
+
+  <div id="emptyState">
+    No result yet. Go back to the tester page, run an extraction with a form
+    template, then come back here.
+  </div>
+
+  <div id="resultView">
+    <div id="fieldsErrorNote"></div>
+
+    <div class="intake-form">
+      <h3>ใบบันทึกรับใบเสนอราคา / QUOTATION INTAKE FORM</h3>
+
+      <div class="field-row">
+        <label for="ff_vendor">ชื่อผู้ขาย / Vendor</label>
+        <input type="text" id="ff_vendor" readonly />
+      </div>
+      <div class="field-row">
+        <label for="ff_quote_no">เลขที่ใบเสนอราคา / Quote No.</label>
+        <input type="text" id="ff_quote_no" readonly />
+      </div>
+      <div class="field-row">
+        <label for="ff_quote_date">วันที่ / Date</label>
+        <input type="text" id="ff_quote_date" readonly />
+      </div>
+      <div class="field-row">
+        <label for="ff_buyer">ผู้ซื้อ / Buyer</label>
+        <input type="text" id="ff_buyer" readonly />
+      </div>
+
+      <div class="field-row">
+        <label>รายการสินค้า / Line items</label>
+        <table id="itemsTable">
+          <thead>
+            <tr><th>รายการ</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>จำนวนเงิน</th></tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="totals-row">
+        <label for="ff_subtotal">รวมเป็นเงิน / Subtotal</label>
+        <input type="text" id="ff_subtotal" readonly />
+      </div>
+      <div class="totals-row">
+        <label for="ff_vat">ภาษีมูลค่าเพิ่ม 7% / VAT</label>
+        <input type="text" id="ff_vat" readonly />
+      </div>
+      <div class="totals-row">
+        <label for="ff_grand_total">ยอดรวมทั้งสิ้น / Grand Total</label>
+        <input type="text" id="ff_grand_total" readonly />
+      </div>
+    </div>
+
+    <ul class="warnings" id="fillWarningsList"></ul>
+    <a id="downloadFilledForm" href="#" download="filled_form.pdf" hidden>Download filled form PDF</a>
+
+    <details class="raw-json">
+      <summary>Raw extracted_fields JSON</summary>
+      <pre id="fieldsJson"></pre>
+    </details>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = "pdf-tester:lastResult";
+
+    function base64ToBlob(base64, mimeType) {
+      const byteChars = atob(base64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: mimeType });
+    }
+
+    function render(result) {
+      const fields = result.extracted_fields || {};
+      $("fieldsJson").textContent = JSON.stringify(fields, null, 2);
+
+      const errorNote = $("fieldsErrorNote");
+      if (fields.error) {
+        errorNote.textContent = `Quote-field extraction did not complete, so the form below is blank: ${fields.error}`;
+        errorNote.style.display = "block";
+      } else {
+        errorNote.style.display = "none";
+      }
+
+      $("ff_vendor").value = fields.vendor_name || "";
+      $("ff_quote_no").value = fields.quote_no || "";
+      $("ff_quote_date").value = fields.quote_date || "";
+      $("ff_buyer").value = fields.buyer_name || "";
+      $("ff_subtotal").value = fields.subtotal || "";
+      $("ff_vat").value = fields.vat || "";
+      $("ff_grand_total").value = fields.grand_total || "";
+
+      const itemsBody = $("itemsBody");
+      itemsBody.innerHTML = "";
+      const items = fields.items || [];
+      const rowCount = Math.max(items.length, 3);
+      for (let i = 0; i < rowCount; i++) {
+        const item = items[i] || {};
+        const tr = document.createElement("tr");
+        for (const key of ["description", "qty", "unit_price", "amount"]) {
+          const td = document.createElement("td");
+          const input = document.createElement("input");
+          input.type = "text";
+          input.readOnly = true;
+          input.value = item[key] || "";
+          td.appendChild(input);
+          tr.appendChild(td);
+        }
+        itemsBody.appendChild(tr);
+      }
+
+      const fillWarningsList = $("fillWarningsList");
+      fillWarningsList.innerHTML = "";
+      for (const w of result.fill_warnings || []) {
+        const li = document.createElement("li");
+        li.textContent = w;
+        fillWarningsList.appendChild(li);
+      }
+
+      const downloadLink = $("downloadFilledForm");
+      if (result.filled_form_base64) {
+        downloadLink.href = URL.createObjectURL(base64ToBlob(result.filled_form_base64, "application/pdf"));
+        downloadLink.hidden = false;
+      } else {
+        downloadLink.hidden = true;
+      }
+    }
+
+    let stored = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      stored = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      stored = null;
+    }
+
+    if (stored) {
+      $("emptyState").style.display = "none";
+      $("resultView").style.display = "block";
+      render(stored);
+    } else {
+      $("emptyState").style.display = "block";
+      $("resultView").style.display = "none";
+    }
+  </script>
+</body>
+</html>
