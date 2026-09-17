@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 from langchain_ollama import ChatOllama
 
@@ -33,6 +34,8 @@ markdown fences) with exactly this shape:
 
 Use "" for any field you cannot find. Keep numbers as they appear in the \
 source text (including thousands separators). Do not invent values."""
+
+DEFAULT_MAX_ATTEMPTS = 3
 
 
 @dataclass
@@ -71,27 +74,56 @@ async def extract_quote_fields(
     *,
     model: str,
     base_url: str,
+    max_attempts: int = DEFAULT_MAX_ATTEMPTS,
 ) -> QuoteFields:
     """Ask the configured Gemma model to parse quotation text into QuoteFields.
+
+    A reply that isn't a JSON object is retried up to ``max_attempts`` times.
+    A failed model call is not retried: it means the model is unreachable,
+    and retrying would only multiply the wait.
 
     Never raises: a model or parsing failure is reported via
     ``QuoteFields.error`` with an otherwise-empty result, so callers always
     get a usable object.
     """
     llm = ChatOllama(model=model, base_url=base_url, temperature=0)
-    try:
-        response = await llm.ainvoke(
-            [("system", SYSTEM_PROMPT), ("human", text)],
-        )
-    except Exception as exc:  # noqa: BLE001 - surface as a field, never crash the graph
-        return QuoteFields(error=f"Model call failed: {exc}")
+    messages: list[tuple[str, str]] = [("system", SYSTEM_PROMPT), ("human", text)]
 
-    raw = _strip_code_fence(str(response.content)).strip()
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        return QuoteFields(error=f"Model did not return valid JSON: {exc}")
+    last_error: ValueError | None = None
+    for _ in range(max_attempts):
+        try:
+            response = await llm.ainvoke(messages)
+        except Exception as exc:  # noqa: BLE001 - surface as a field, never crash the graph
+            return QuoteFields(error=f"Model call failed: {exc}")
 
+        reply = str(response.content)
+        try:
+            data = json.loads(_strip_code_fence(reply).strip())
+            if not isinstance(data, dict):
+                raise ValueError(f"expected a JSON object, got {type(data).__name__}")
+        except ValueError as exc:  # JSONDecodeError is a ValueError subclass
+            last_error = exc
+            # At temperature=0 re-sending the same prompt yields the same bad
+            # reply, so show the model what it sent and why it was rejected.
+            messages += [
+                ("ai", reply),
+                (
+                    "human",
+                    f"That reply was rejected: {exc}. Respond with ONLY the "
+                    "JSON object described in the instructions.",
+                ),
+            ]
+            continue
+        return _quote_fields_from_json(data)
+
+    return QuoteFields(
+        error=f"Model did not return a valid JSON object after "
+        f"{max_attempts} attempts: {last_error}"
+    )
+
+
+def _quote_fields_from_json(data: dict[str, Any]) -> QuoteFields:
+    """Build QuoteFields from the model's parsed JSON object."""
     items = [
         QuoteItem(
             description=str(item.get("description", "")),
