@@ -32,6 +32,7 @@ pytestmark = [
 
 
 @pytest.mark.langsmith
+@pytest.mark.requires_ollama
 async def test_quote_to_form_fills_all_fields() -> None:
     quote_b64 = base64.b64encode(build_quote_pdf()).decode("ascii")
     form_b64 = base64.b64encode(build_form_pdf()).decode("ascii")

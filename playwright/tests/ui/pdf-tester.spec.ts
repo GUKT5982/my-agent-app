@@ -66,12 +66,14 @@ test.describe("PDF tester page (static/pdf-tester/index.html)", () => {
     const fields = JSON.parse(fieldsJson ?? "{}");
 
     if (fields.error) {
-      // Only tolerate the ONE known, environment-caused failure (Ollama
-      // cloud unreachable on this network - see bruno/06 and
-      // chat-agent.spec.ts). Any other error is a real regression and must
-      // fail the test, not be silently swallowed.
+      // Only tolerate the model being unreachable, which is an environment
+      // condition rather than an app defect - either the local Ollama isn't
+      // running ("All connection attempts failed") or it is, but outbound
+      // TLS to ollama.com is blocked (see bruno/06 and chat-agent.spec.ts).
+      // Anything else - a bad JSON reply, a field-mapping bug - is a real
+      // regression and must fail here, not be silently swallowed.
       expect(fields.error, `unexpected quote-field extraction error: ${fields.error}`).toMatch(
-        /ollama\.com|tls: handshake failure|ResponseError|connect(ion)? (refused|failed)/i,
+        /ollama\.com|tls: handshake failure|ResponseError|all connection attempts failed|connect(ion)? (refused|failed)/i,
       );
       console.log(`[ui] quote-field model call blocked by network, as expected: ${fields.error}`);
       await expect(page.locator("#fieldsErrorNote")).toBeVisible();
