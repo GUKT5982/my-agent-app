@@ -3,7 +3,7 @@ title: PDF Extraction & Quote-to-Form — Progress
 project: my-agent-app
 status: in-progress
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-17
 tags:
   - project/pdf-extractor
   - langgraph
@@ -31,7 +31,10 @@ tags:
 > - ไฟล์หลัก: `src/agent/quote_extraction.py`, `src/agent/form_filling.py`, `scripts/generate_form_demo.py`
 
 > [!success] Testing / Infra
-> - Unit tests 12/12 ผ่าน, `ruff check` + `mypy --strict` สะอาด (ยกเว้นปัญหาเดิมที่มีอยู่ก่อนหน้านี้ในโปรเจกต์ ไม่เกี่ยวกับงานนี้)
+> - pytest 31 ผ่าน / 3 skip (skip มีเหตุผลกำกับ: Ollama ไม่ได้รัน 2, ไม่มีคอร์ปัส `test_pdfs` 1) / 0 fail, `ruff check` + `mypy --strict` สะอาด
+> - Playwright suite (`playwright/`): API 7 + UI 5 เทสต์ ครอบ Bruno collection และหน้า `static/pdf-tester/`
+> - 2026-09-17: แก้บั๊กไฟล์ที่ไม่ใช่ PDF (เช่น HTML) ถูกรายงานว่าถอดสำเร็จ — PyMuPDF สร้างหน้าปลอมแล้วโดน OCR ทีละหน้า ตอนนี้บังคับเช็ค `%PDF-` header ทั้งไฟล์ใบเสนอราคาและ form template (เดิม template ที่ไม่ใช่ PDF ได้ "ฟอร์มที่กรอกแล้ว" เป็นหน้าขยะกลับมาและถูกบันทึกลงดิสก์ โดยไม่มีคำเตือน)
+> - 2026-09-17: เทสต์ OCR 3 ตัวเคยถูก skip เงียบๆ เพราะ pytest ไม่ได้โหลด `TESSERACT_CMD` จาก `.env` — แก้แล้ว รันจริงและผ่าน
 > - สร้างเครื่องมือ **Payload Scanner** (web artifact) ช่วยแปลง PDF → base64 JSON payload สำหรับทดสอบใน Studio โดยไม่ต้องยุ่งกับ PowerShell/clipboard
 > - แก้ปัญหาไฟล์ demo ใหญ่เกินไป (~980KB → ~60KB ด้วย font subsetting) ที่เคยทำให้ copy-paste พัง
 
@@ -55,11 +58,17 @@ tags:
 > เจอ ghost process ค้างใน TCP table ของเครื่องที่ฆ่าไม่ตาย ตอนนี้ใช้ port 2777 แทนชั่วคราว (`langgraph dev --port 2777`)
 > - [ ] ลอง restart เครื่อง (Windows) ดูว่า TCP table เคลียร์หรือไม่
 > - [ ] ถ้ายังไม่หาย ให้ใช้ port อื่นที่ไม่เคยใช้มาก่อนทุกครั้งที่ restart server (อย่าใช้ port ซ้ำ)
+>
+> 2026-09-17 (เครื่อง KCG): เจออาการเดียวกันแต่รู้สาเหตุแล้ว — server ตัวเก่ายังไม่ตาย และ Windows ยอมให้ server ตัวใหม่ bind พอร์ต 2024 ซ้ำได้ request เลยยังวิ่งไปตัวเก่า server ที่ "restart แล้ว" จึงยังรันโค้ดเดิม
+> - เช็คก่อนเทสต์ทุกครั้ง: `netstat -ano | findstr :2024` ต้องมีบรรทัด `LISTENING` แค่บรรทัดเดียว
+> - ถ้ามีเกิน ให้ฆ่าทั้ง tree จาก process แม่ (`taskkill /PID <pid> /T /F`) ฆ่าแค่ตัวลูกไม่พอ
+> - `langgraph dev` บนเครื่องนี้ไม่ reload เองเมื่อแก้ไฟล์ใน `src/` ต้อง restart ทุกครั้งหลังแก้โค้ด
 
 > [!note] ปรับปรุงเพิ่มเติม (ไม่เร่งด่วน)
-> - [ ] รองรับฟอร์มที่ชื่อฟิลด์ไม่ตรงกับ convention `item_N_desc/qty/price/amount` (ตอนนี้ fix ตาม pattern เดียวจาก demo)
-> - [ ] เพิ่ม retry logic ถ้า Gemma ตอบ JSON ผิดรูปแบบ (ตอนนี้ fail แบบ graceful แต่ไม่ retry)
-> - [ ] ปัญหาเทสต์ `@pytest.mark.langsmith` ที่ fail เพราะไม่มี LANGSMITH_API_KEY (pre-existing ก่อนงานนี้ ไม่กระทบ logic)
+> - [x] ชื่อฟิลด์ที่ต่างกันแค่รูปแบบ match ได้แล้ว (`Vendor Name` / `VENDOR-NAME` / `form1[0].page1[0].vendor_name[0]`) และฟิลด์ที่โผล่หลายที่ถูกกรอกครบทุกจุด
+>   - [ ] ยังไม่รองรับ convention ที่ต่างกันจริงๆ (เช่น `qty1`, `Description 1`) — ต้องมีฟอร์มจริงก่อนถึงจะทำ mapping ได้
+> - [x] Retry เมื่อ Gemma ตอบ JSON ผิดรูปแบบ (สูงสุด 3 ครั้ง ส่ง error กลับให้โมเดลเห็น เพราะ temperature=0 ส่ง prompt เดิมจะได้คำตอบเดิม) — ไม่ retry ถ้าเรียกโมเดลไม่ได้เลย และแก้ crash กรณีตอบ JSON ที่ไม่ใช่ object
+> - [x] เทสต์ `@pytest.mark.langsmith` — ปิด LangSmith tracking เมื่อไม่มี API key เทสต์เลยรันจริงแทนที่จะ fail 401 ก่อนเริ่ม
 
 ---
 
