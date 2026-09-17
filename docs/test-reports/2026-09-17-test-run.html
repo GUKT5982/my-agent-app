@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote-to-Form Test Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #f4f6f3;
+    --ink: #1b2320;
+    --muted: #56625c;
+    --faint: #7f8a84;
+    --rule: #dce2dd;
+    --accent: #2d5b88;
+    --pass: #1d7a4b;
+    --pass-bg: #e2f1e8;
+    --skip: #8f5d00;
+    --skip-bg: #f8eed8;
+    --fail: #b42318;
+    --fail-bg: #fbe6e3;
+    --note-bg: #e9ede9;
+    --sans: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111513;
+      --ink: #e3e8e4;
+      --muted: #9fa9a3;
+      --faint: #737e78;
+      --rule: #2a322e;
+      --accent: #8db3db;
+      --pass: #62cb92;
+      --pass-bg: #14281d;
+      --skip: #e2ab4a;
+      --skip-bg: #2a2212;
+      --fail: #f2796c;
+      --fail-bg: #311816;
+      --note-bg: #1c221f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #111513;
+    --ink: #e3e8e4;
+    --muted: #9fa9a3;
+    --faint: #737e78;
+    --rule: #2a322e;
+    --accent: #8db3db;
+    --pass: #62cb92;
+    --pass-bg: #14281d;
+    --skip: #e2ab4a;
+    --skip-bg: #2a2212;
+    --fail: #f2796c;
+    --fail-bg: #311816;
+    --note-bg: #1c221f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    padding-block: 44px 72px;
+    padding-inline: 20px;
+  }
+  .page {
+    max-width: 880px;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--mono); }
+
+  /* verdict */
+  .verdict { display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 { font-size: 2.25rem; line-height: 1.3; font-weight: 600; }
+  .lead { font-size: 1.0625rem; color: var(--muted); max-width: 62ch; }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 18px;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--faint);
+    overflow-wrap: anywhere;
+  }
+  .meta b { font-weight: 500; color: var(--muted); }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  h2 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
+  .intro { color: var(--muted); max-width: 64ch; margin-top: -8px; }
+
+  /* suite summary */
+  .suites { border-top: 1px solid var(--rule); }
+  .suite-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(0, 2fr) auto;
+    grid-template-areas: "name bar time";
+    align-items: center;
+    gap: 8px 28px;
+    padding-block: 18px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .suite-name { grid-area: name; display: flex; flex-direction: column; }
+  .suite-name strong { font-size: 1.0625rem; font-weight: 600; }
+  .suite-name span { font-size: 0.8125rem; color: var(--muted); }
+  .suite-bar { grid-area: bar; display: flex; flex-direction: column; gap: 6px; }
+  .suite-time {
+    grid-area: time;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bar {
+    display: flex;
+    gap: 2px;
+    height: 10px;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar i { display: block; min-width: 4px; }
+  .bar .passed { background: var(--pass); }
+  .bar .skipped { background: var(--skip); }
+  .bar .failed { background: var(--fail); }
+  .counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .counts .n { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+  .counts .zero .n { color: var(--faint); font-weight: 400; }
+
+  /* not yet testable */
+  .pending {
+    background: var(--skip-bg);
+    border-radius: 8px;
+    padding: 24px 28px;
+    gap: 20px;
+  }
+  .pending .intro { margin-top: -12px; }
+  .pending-list { display: flex; flex-direction: column; gap: 20px; }
+  .pending-item { display: flex; flex-direction: column; gap: 4px; }
+  .pending-item h3 { font-size: 1rem; font-weight: 600; }
+  .pending-item p { max-width: 66ch; }
+  .names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+
+  /* fixes */
+  .fix-group { display: flex; flex-direction: column; }
+  .fix-group h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding-bottom: 8px;
+  }
+  .fix {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 6px 32px;
+    padding-block: 16px;
+    border-top: 1px solid var(--rule);
+  }
+  .fix-group .fix:last-child { border-bottom: 1px solid var(--rule); }
+  .fix-title { font-weight: 600; }
+  .fix-body { color: var(--muted); }
+  .guards { display: flex; flex-direction: column; gap: 2px; }
+  .guards-label { font-size: 0.75rem; color: var(--faint); }
+  .guards code {
+    font-size: 0.8125rem;
+    color: var(--accent);
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+  }
+
+  /* detail */
+  .detail { display: flex; flex-direction: column; gap: 56px; }
+  .suite-detail { display: flex; flex-direction: column; gap: 32px; }
+  .suite-detail > h3 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .file-group { display: flex; flex-direction: column; gap: 4px; }
+  .file-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+  }
+  .file-path {
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+  .project {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0 5px;
+  }
+  .file-desc { font-size: 0.875rem; color: var(--muted); max-width: 68ch; }
+  .tests { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+  .test {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 14px;
+    padding-block: 7px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .chip {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.7;
+    text-align: center;
+    border-radius: 4px;
+  }
+  .chip.passed { color: var(--pass); background: var(--pass-bg); }
+  .chip.skipped { color: var(--skip); background: var(--skip-bg); }
+  .chip.failed { color: var(--fail); background: var(--fail-bg); }
+  .test-name {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .test-time {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .test-note {
+    grid-column: 2 / -1;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--muted);
+    background: var(--note-bg);
+    border-radius: 4px;
+    padding: 6px 9px;
+    overflow-wrap: anywhere;
+  }
+
+  footer { font-size: 0.8125rem; color: var(--faint); border-top: 1px solid var(--rule); padding-top: 16px; }
+
+  @media (max-width: 640px) {
+    body { padding-block: 28px 56px; }
+    .page { gap: 44px; }
+    h1 { font-size: 1.75rem; }
+    .suite-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas: "name time" "bar bar";
+    }
+    .fix { grid-template-columns: minmax(0, 1fr); }
+    .pending { padding: 20px; }
+  }
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header class="verdict">
+    <div class="eyebrow">PDF Extraction &amp; Quote-to-Form</div>
+    <h1>ไม่มีเทสต์ที่พัง</h1>
+    <p class="lead">
+      ผ่าน 45 จาก 48 เทสต์ อีก 3 ตัวถูกข้ามเพราะเครื่องนี้ยังไม่มีสิ่งที่เทสต์ต้องใช้
+      และมี 2 เทสต์ที่ผ่านโดยยังไม่ได้เรียกโมเดลจริง
+    </p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section aria-labelledby="h-summary">
+    <h2 id="h-summary">ผลแต่ละชุด</h2>
+    <div class="suites" id="suites"></div>
+  </section>
+
+  <section class="pending" aria-labelledby="h-pending">
+    <h2 id="h-pending">ส่วนที่ยังทดสอบไม่ได้</h2>
+    <p class="intro">ทุกข้อขาดสิ่งที่ต้องใช้จากภายนอกเครื่อง ไม่ได้เกิดจากโค้ดพัง</p>
+    <div class="pending-list">
+      <div class="pending-item">
+        <h3>โมเดลยังเรียกใช้ไม่ได้</h3>
+        <p>
+          Ollama ไม่ได้เปิดอยู่ที่ localhost:11434 และก่อนหน้านี้ตอนที่เปิดอยู่ เครือข่ายนี้ก็ต่อโมเดล cloud
+          ที่ ollama.com ไม่ได้ (TLS handshake failure) การให้ Gemma แกะข้อมูลใบเสนอราคาแล้วกรอกฟอร์ม
+          จึงยังไม่เคยทดสอบกับโมเดลจริง pytest ข้ามไป 2 ตัว ส่วน Playwright 2 ตัวผ่าน
+          เพราะยอมรับเฉพาะ error ที่บอกว่าเข้าถึงโมเดลไม่ได้
+        </p>
+        <div class="names">
+          <span>test_quote_to_form_fills_all_fields</span>
+          <span>test_agent_simple_passthrough</span>
+          <span>runs the quote-to-form flow and links to a separate result page</span>
+          <span>POST /runs/wait on the agent graph replies or surfaces the known cloud-model error shape</span>
+        </div>
+      </div>
+      <div class="pending-item">
+        <h3>ไม่มีโฟลเดอร์ไฟล์ทดสอบ test_pdfs ในเครื่องนี้</h3>
+        <p>ยังไม่ได้ลองให้ graph อ่าน PDF จริงชุดใหญ่ ตอนนี้ทดสอบด้วยไฟล์ที่สร้างขึ้นเองและไฟล์ demo</p>
+        <div class="names"><span>test_pdf_graph_extracts_real_file</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-fixes">
+    <h2 id="h-fixes">ปัญหาที่เจอระหว่างทดสอบและแก้แล้ว</h2>
+    <p class="intro">แต่ละข้อมีเทสต์คุมไว้ ถ้าปัญหากลับมา เทสต์ตัวนั้นจะพัง</p>
+
+    <div class="fix-group">
+      <h3>ในตัวแอป</h3>
+      <div class="fix">
+        <div>
+          <p class="fix-title">ไฟล์ที่ไม่ใช่ PDF ถูกรายงานว่าอ่านสำเร็จ</p>
+          <p class="fix-body">PyMuPDF เปิดไฟล์ HTML ขนาดราว 10KB เป็นเอกสาร 23 หน้าปลอม แล้วแต่ละหน้าถูกส่งไป OCR</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่คุมไว้</span>
+          <code>test_extract_non_pdf_file_is_rejected</code>
+        </div>
+      </div>
+      <div class="fix">
+        <div>
+          <p class="fix-title">Form template ที่ไม่ใช่ PDF ได้ไฟล์ขยะกลับมา</p>
+          <p class="fix-body">ได้ "ฟอร์มที่กรอกแล้ว" เป็นไฟล์ 104KB ของหน้าปลอม และถูกบันทึกลงดิสก์ โดยไม่มีคำเตือนใดๆ</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่คุมไว้</span>
+          <code>test_fill_rejects_non_pdf_template</code>
+          <code>rejects a non-PDF form template instead of returning a garbage filled form</code>
+        </div>
+      </div>
+      <div class="fix">
+        <div>
+          <p class="fix-title">ชื่อช่องในฟอร์มต้องตรงกันทุกตัวอักษร</p>
+          <p class="fix-body">ฟอร์มที่ตั้งชื่อ Vendor Name, QUOTE-NO หรือชื่อแบบ XFA กรอกได้แค่ 1 จาก 4 ค่า และช่องที่ซ้ำกันหลายจุดถูกกรอกแค่จุดแรก</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่คุมไว้</span>
+          <code>test_fill_matches_names_across_authoring_styles</code>
+          <code>test_fill_every_widget_sharing_a_field_name</code>
+        </div>
+      </div>
+      <div class="fix">
+        <div>
+          <p class="fix-title">โมเดลตอบ JSON ที่ไม่ใช่ object แล้ว graph crash</p>
+          <p class="fix-body">ถ้าได้คำตอบเป็น [] โค้ดจะพังทั้งที่เขียนไว้ว่าไม่พัง ตอนนี้ถือเป็นคำตอบผิดรูปแบบและลองใหม่ได้สูงสุด 3 ครั้ง</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่คุมไว้</span>
+          <code>test_non_object_json_is_retried</code>
+          <code>test_invalid_json_is_retried_with_feedback</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="fix-group">
+      <h3>ในชุดเทสต์</h3>
+      <div class="fix">
+        <div>
+          <p class="fix-title">เทสต์ OCR 3 ตัวถูกข้ามเงียบๆ มาตลอด</p>
+          <p class="fix-body">pytest ไม่ได้โหลด TESSERACT_CMD จาก .env ทั้งที่ติดตั้ง Tesseract ไว้แล้ว ตอนนี้รันจริงและผ่านทั้ง 3 ตัว</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่รันได้แล้ว</span>
+          <code>test_extract_scanned_upright_page_via_ocr</code>
+          <code>test_extract_scanned_upside_down_page_via_ocr</code>
+          <code>test_extract_90_degree_rotation</code>
+        </div>
+      </div>
+      <div class="fix">
+        <div>
+          <p class="fix-title">เทสต์ที่ใช้ LangSmith พังก่อนโค้ดในเทสต์ได้รัน</p>
+          <p class="fix-body">ไม่มี API key จึงโดน 401 ทุกครั้ง ตอนนี้รันโดยไม่ส่งผลไป LangSmith ได้เทสต์ที่ผ่านจริงคืนมา 1 ตัว</p>
+        </div>
+        <div class="guards">
+          <span class="guards-label">เทสต์ที่รันได้แล้ว</span>
+          <code>test_plain_extraction_skips_form_fill_when_no_template</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-detail">
+    <h2 id="h-detail">รายละเอียดทุกเทสต์</h2>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <footer>
+    ตัวเลขทั้งหมดมาจากการรันครั้งเดียวกัน อ่านจาก junit XML ของ pytest และ JSON reporter ของ Playwright
+    ซึ่งยิงไปที่ langgraph dev บน localhost:2024 และเปิดหน้าเว็บด้วย Chromium
+  </footer>
+</div>
+
+<script type="application/json" id="run-data">{"run": {"date": "2026-09-17 16:04", "commit": "ac73baa", "branch": "feature/pdf-extraction-and-quote-to-form"}, "suites": [{"id": "pytest", "duration_ms": 21277, "counts": {"passed": 32, "skipped": 3, "failed": 0, "total": 35}, "groups": [{"file": "tests/integration_tests/test_graph.py", "tests": [{"name": "test_agent_simple_passthrough", "status": "skipped", "ms": 2, "reason": "Ollama not reachable at http://localhost:11434"}]}, {"file": "tests/integration_tests/test_pdf_graph.py", "tests": [{"name": "test_pdf_graph_extracts_real_file", "status": "skipped", "ms": 2, "reason": "sibling test_pdfs corpus not present"}]}, {"file": "tests/integration_tests/test_quote_to_form.py", "tests": [{"name": "test_quote_to_form_fills_all_fields", "status": "skipped", "ms": 1, "reason": "Ollama not reachable at http://localhost:11434"}, {"name": "test_plain_extraction_skips_form_fill_when_no_template", "status": "passed", "ms": 285, "reason": null}]}, {"file": "tests/unit_tests/test_configuration.py", "tests": [{"name": "test_placeholder", "status": "passed", "ms": 2, "reason": null}]}, {"file": "tests/unit_tests/test_form_filling.py", "tests": [{"name": "test_fill_matches_fields_by_name", "status": "passed", "ms": 24, "reason": null}, {"name": "test_fill_reports_unmatched_values_and_empty_widgets", "status": "passed", "ms": 7, "reason": null}, {"name": "test_fill_matches_names_across_authoring_styles", "status": "passed", "ms": 15, "reason": null}, {"name": "test_fill_does_not_match_different_item_rows", "status": "passed", "ms": 9, "reason": null}, {"name": "test_fill_every_widget_sharing_a_field_name", "status": "passed", "ms": 8, "reason": null}, {"name": "test_fill_corrupted_form_bytes", "status": "passed", "ms": 1, "reason": null}, {"name": "test_fill_rejects_non_pdf_template", "status": "passed", "ms": 1, "reason": null}]}, {"file": "tests/unit_tests/test_pdf_extraction.py", "tests": [{"name": "test_extract_embedded_text_pdf", "status": "passed", "ms": 12, "reason": null}, {"name": "test_extract_page_with_rotate_metadata_still_uses_embedded_text", "status": "passed", "ms": 6, "reason": null}, {"name": "test_extract_scanned_upright_page_via_ocr", "status": "passed", "ms": 4054, "reason": null}, {"name": "test_extract_scanned_upside_down_page_via_ocr", "status": "passed", "ms": 3803, "reason": null}, {"name": "test_extract_90_degree_rotation", "status": "passed", "ms": 4050, "reason": null}, {"name": "test_extract_blank_page_does_not_crash", "status": "passed", "ms": 1732, "reason": null}, {"name": "test_extract_corrupted_pdf_bytes", "status": "passed", "ms": 2, "reason": null}, {"name": "test_extract_empty_bytes", "status": "passed", "ms": 1, "reason": null}, {"name": "test_extract_non_pdf_file_is_rejected", "status": "passed", "ms": 1, "reason": null}, {"name": "test_extract_tolerates_junk_before_pdf_header", "status": "passed", "ms": 11, "reason": null}]}, {"file": "tests/unit_tests/test_pdf_graph_configuration.py", "tests": [{"name": "test_pdf_graph_is_valid_pregel", "status": "passed", "ms": 1, "reason": null}]}, {"file": "tests/unit_tests/test_quote_extraction.py", "tests": [{"name": "test_valid_reply_needs_one_call", "status": "passed", "ms": 3, "reason": null}, {"name": "test_code_fenced_reply_is_accepted", "status": "passed", "ms": 5, "reason": null}, {"name": "test_invalid_json_is_retried_with_feedback", "status": "passed", "ms": 5, "reason": null}, {"name": "test_non_object_json_is_retried", "status": "passed", "ms": 5, "reason": null}, {"name": "test_gives_up_after_max_attempts", "status": "passed", "ms": 5, "reason": null}, {"name": "test_failed_model_call_is_not_retried", "status": "passed", "ms": 6, "reason": null}]}, {"file": "tests/unit_tests/test_quote_storage.py", "tests": [{"name": "test_save_and_get_round_trip", "status": "passed", "ms": 36, "reason": null}, {"name": "test_save_writes_filled_form_to_disk", "status": "passed", "ms": 33, "reason": null}, {"name": "test_failed_extraction_is_still_recorded", "status": "passed", "ms": 34, "reason": null}, {"name": "test_get_missing_record_returns_none", "status": "passed", "ms": 18, "reason": null}, {"name": "test_list_returns_newest_first", "status": "passed", "ms": 40, "reason": null}, {"name": "test_list_respects_limit", "status": "passed", "ms": 89, "reason": null}]}]}, {"id": "playwright", "duration_ms": 28923, "counts": {"passed": 13, "skipped": 0, "failed": 0, "total": 13}, "groups": [{"file": "playwright/tests/api/chat-agent.spec.ts", "project": "api", "tests": [{"name": "POST /runs/wait on the agent graph replies or surfaces the known cloud-model error shape", "status": "passed", "ms": 3225, "reason": "[chat-agent] cloud model unreachable, got expected __error__ shape: {\"error\":\"ConnectError\",\"message\":\"An internal error occurred\"}"}]}, {"file": "playwright/tests/api/pdf-extractor.spec.ts", "project": "api", "tests": [{"name": "extracts embedded text from a valid PDF (fast path, no OCR)", "status": "passed", "ms": 817, "reason": null}, {"name": "returns a graceful error (HTTP 200) for an invalid/empty PDF payload", "status": "passed", "ms": 2372, "reason": null}, {"name": "rejects a non-PDF form template instead of returning a garbage filled form", "status": "passed", "ms": 3337, "reason": null}, {"name": "create thread -> run -> read back persisted state", "status": "passed", "ms": 1036, "reason": null}]}, {"file": "playwright/tests/api/server.spec.ts", "project": "api", "tests": [{"name": "GET /ok reports the server is up", "status": "passed", "ms": 71, "reason": null}, {"name": "GET /info returns server/runtime metadata", "status": "passed", "ms": 25, "reason": null}, {"name": "POST /assistants/search lists the registered graphs", "status": "passed", "ms": 34, "reason": null}]}, {"file": "playwright/tests/ui/pdf-tester.spec.ts", "project": "ui", "tests": [{"name": "extracts text from a quote PDF with no form template", "status": "passed", "ms": 5302, "reason": null}, {"name": "shows an inline error for an unreadable file", "status": "passed", "ms": 4585, "reason": null}, {"name": "runs the quote-to-form flow and links to a separate result page", "status": "passed", "ms": 5137, "reason": "[ui] quote-field model call blocked by network, as expected: Model call failed: All connection attempts failed"}, {"name": "shows the empty state when opened with no prior result", "status": "passed", "ms": 4538, "reason": null}, {"name": "populates the intake-form fields from a successful extraction (mocked API)", "status": "passed", "ms": 1872, "reason": null}]}]}]}</script>
+<script>
+  (function () {
+    const data = JSON.parse(document.getElementById("run-data").textContent);
+
+    const SUITES = {
+      pytest: { name: "pytest", sub: "Python · unit และ integration" },
+      playwright: { name: "Playwright", sub: "API ผ่าน HTTP และ UI บน Chromium" },
+    };
+    const STATUS = { passed: "ผ่าน", skipped: "ข้าม", failed: "พัง" };
+    const FILES = {
+      "tests/unit_tests/test_pdf_extraction.py": "ถอดข้อความจาก PDF ทั้งแบบมีข้อความในไฟล์และแบบสแกนผ่าน OCR รวมถึงหน้ากลับหัว หน้าหมุน และการปฏิเสธไฟล์ที่ไม่ใช่ PDF",
+      "tests/unit_tests/test_form_filling.py": "กรอกค่าลงช่องในฟอร์ม PDF จับคู่ชื่อช่องหลายรูปแบบ และปฏิเสธ template ที่ไม่ใช่ PDF",
+      "tests/unit_tests/test_quote_extraction.py": "แปลงคำตอบของโมเดลเป็นข้อมูลใบเสนอราคา ใช้โมเดลปลอมที่ตอบตามสคริปต์ จึงไม่ต้องเปิด Ollama",
+      "tests/unit_tests/test_quote_storage.py": "บันทึกและอ่านผลลง SQLite รวมถึงไฟล์ฟอร์มที่กรอกแล้ว",
+      "tests/unit_tests/test_pdf_graph_configuration.py": "graph pdf_extractor ประกอบขึ้นได้ถูกต้อง",
+      "tests/unit_tests/test_configuration.py": "เทสต์ตั้งต้นที่มากับ template ของโปรเจกต์",
+      "tests/integration_tests/test_graph.py": "graph แชท (agent) เรียกโมเดลจริง",
+      "tests/integration_tests/test_pdf_graph.py": "ให้ pdf_extractor อ่านไฟล์จริงจากโฟลเดอร์ test_pdfs",
+      "tests/integration_tests/test_quote_to_form.py": "รัน flow ใบเสนอราคาไปจนถึงฟอร์มด้วย graph จริง",
+      "playwright/tests/api/server.spec.ts": "server ทำงานอยู่ ข้อมูล server และรายชื่อ graph",
+      "playwright/tests/api/pdf-extractor.spec.ts": "เรียก pdf_extractor ผ่าน HTTP ทั้ง PDF ที่ถูกต้อง payload ที่ผิด template ที่ไม่ใช่ PDF และการรันบน thread",
+      "playwright/tests/api/chat-agent.spec.ts": "graph แชทผ่าน HTTP ยอมรับเฉพาะ error ที่บอกว่าเข้าถึงโมเดลไม่ได้",
+      "playwright/tests/ui/pdf-tester.spec.ts": "เปิด Chromium จริงกับหน้า pdf-tester และหน้าฟอร์มผลลัพธ์",
+    };
+
+    const el = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text != null) node.textContent = text;
+      return node;
+    };
+    const fmtMs = (ms) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+
+    const meta = document.getElementById("meta");
+    [["รันเมื่อ", data.run.date], ["branch", data.run.branch], ["commit", data.run.commit]].forEach(
+      ([label, value]) => {
+        const item = el("span");
+        item.append(`${label} `, el("b", null, value));
+        meta.append(item);
+      },
+    );
+
+    const suitesEl = document.getElementById("suites");
+    const detailEl = document.getElementById("detail");
+
+    data.suites.forEach((suite) => {
+      const info = SUITES[suite.id];
+      const c = suite.counts;
+
+      const row = el("div", "suite-row");
+      const name = el("div", "suite-name");
+      name.append(el("strong", null, info.name), el("span", null, info.sub));
+
+      const barWrap = el("div", "suite-bar");
+      const bar = el("div", "bar");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", `ผ่าน ${c.passed} ข้าม ${c.skipped} พัง ${c.failed} จาก ${c.total}`);
+      ["passed", "skipped", "failed"].forEach((k) => {
+        if (!c[k]) return;
+        const seg = el("i", k);
+        seg.style.flex = `${c[k]} 1 0`;
+        bar.append(seg);
+      });
+      const counts = el("div", "counts");
+      ["passed", "skipped", "failed"].forEach((k) => {
+        const item = el("span", c[k] ? "" : "zero");
+        item.append(el("span", "n", String(c[k])), ` ${STATUS[k]}`);
+        counts.append(item);
+      });
+      barWrap.append(bar, counts);
+
+      row.append(name, barWrap, el("div", "suite-time", fmtMs(suite.duration_ms)));
+      suitesEl.append(row);
+
+      const block = el("div", "suite-detail");
+      block.append(el("h3", null, `${info.name} · ${c.total} เทสต์`));
+
+      const groups = suite.groups.slice().sort((a, b) => {
+        const rank = (g) => (g.file.includes("integration_tests") ? 1 : 0);
+        return rank(a) - rank(b);
+      });
+
+      groups.forEach((group) => {
+        const wrap = el("div", "file-group");
+        const head = el("div", "file-head");
+        head.append(el("span", "file-path", group.file));
+        if (group.project) head.append(el("span", "project", group.project));
+        wrap.append(head);
+        if (FILES[group.file]) wrap.append(el("p", "file-desc", FILES[group.file]));
+
+        const list = el("ul", "tests");
+        group.tests.forEach((t) => {
+          const li = el("li", "test");
+          li.append(
+            el("span", `chip ${t.status}`, STATUS[t.status]),
+            el("span", "test-name", t.name),
+            el("span", "test-time", fmtMs(t.ms)),
+          );
+          if (t.reason) li.append(el("div", "test-note", t.reason));
+          list.append(li);
+        });
+        wrap.append(list);
+        block.append(wrap);
+      });
+
+      detailEl.append(block);
+    });
+  })();
+</script>
+</body>
+</html>
