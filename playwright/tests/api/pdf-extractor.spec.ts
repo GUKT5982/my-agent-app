@@ -43,6 +43,33 @@ test.describe("pdf_extractor graph via POST /runs/wait", () => {
     expect(body.error).toBeTruthy();
     expect(body.error).toContain("not a valid PDF");
   });
+
+  test("rejects a non-PDF form template instead of returning a garbage filled form", async ({
+    request,
+  }) => {
+    // PyMuPDF's repair mode opens an HTML file as a PDF with fabricated pages.
+    // Before the header check this came back with no warning at all, as a
+    // ~100KB "filled form" of junk pages. fill_form runs whether or not the
+    // model call before it succeeds, so this holds with Ollama down too.
+    const htmlBase64 = readFileSync(
+      path.join(__dirname, "..", "..", "..", "static", "pdf-tester", "index.html"),
+    ).toString("base64");
+
+    const res = await request.post("/runs/wait", {
+      data: {
+        assistant_id: "pdf_extractor",
+        input: { pdf_base64: tinyPdfBase64, form_template_base64: htmlBase64 },
+        context: { save_to_db: false },
+      },
+      timeout: 60_000,
+    });
+    expect(res.status()).toBe(200);
+
+    const body = await res.json();
+    expect(body.error).toBeNull();
+    expect(body.fill_warnings).toContain("Could not open form template: not a valid PDF");
+    expect(body.filled_form_base64).toBe("");
+  });
 });
 
 test.describe("pdf_extractor graph via a persistent thread", () => {

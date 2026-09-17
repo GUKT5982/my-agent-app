@@ -8,9 +8,12 @@ a specific template.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 import pymupdf
+
+from agent.pdf_extraction import open_pdf
 
 
 @dataclass
@@ -24,20 +27,37 @@ class FormFillResult:
     error: str | None = None
 
 
+def _normalize_field_name(name: str) -> str:
+    """Reduce a form field name to a form that survives authoring-tool styles.
+
+    Templates rarely match our keys byte-for-byte: tools emit "Vendor Name",
+    "VendorName" or "vendor-name" for the same field, and LiveCycle/XFA forms
+    qualify every name with its container path and an index, e.g.
+    "form1[0].page1[0].vendor_name[0]".
+    """
+    leaf = name.rsplit(".", 1)[-1]
+    leaf = re.sub(r"\[\d+\]", "", leaf)
+    return re.sub(r"[\W_]+", "", leaf.casefold())
+
+
 def fill_pdf_form(form_bytes: bytes, values: dict[str, str]) -> FormFillResult:
     """Fill a fillable PDF's text widgets from a flat field-name -> value dict.
+
+    Names are compared via ``_normalize_field_name``, and every widget whose
+    name matches is filled - a field shown in several places (e.g. a quote
+    number repeated in each page header) is filled everywhere.
 
     Never raises: a malformed form is reported via ``FormFillResult.error``.
     Keys in ``values`` with no matching widget, and widgets with no matching
     key, are both reported so callers can see incomplete mappings rather
     than silently losing data.
     """
-    try:
-        doc = pymupdf.open(stream=form_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
-    except Exception as exc:  # noqa: BLE001 - malformed form must not crash the pipeline
-        return FormFillResult(error=f"Could not open form template: {exc}")
+    doc = open_pdf(form_bytes)
+    if doc is None:
+        return FormFillResult(error="Could not open form template: not a valid PDF")
 
-    remaining_keys = {k for k, v in values.items() if v}
+    keys_by_normalized = {_normalize_field_name(k): k for k, v in values.items() if v}
+    matched_keys: set[str] = set()
     filled: list[str] = []
     empty_widgets: list[str] = []
 
@@ -45,13 +65,14 @@ def fill_pdf_form(form_bytes: bytes, values: dict[str, str]) -> FormFillResult:
         page: pymupdf.Page = doc[i]
         for widget in page.widgets() or []:  # type: ignore[no-untyped-call]
             name = widget.field_name
-            if name in remaining_keys:
-                widget.field_value = values[name]
-                widget.update()
-                filled.append(name)
-                remaining_keys.discard(name)
-            else:
+            key = keys_by_normalized.get(_normalize_field_name(name))
+            if key is None:
                 empty_widgets.append(name)
+                continue
+            widget.field_value = values[key]
+            widget.update()
+            filled.append(name)
+            matched_keys.add(key)
 
     # PyMuPDF's widget API only accepts the 4 base-14 Latin fonts (Cour,
     # TiRo, Helv, ZaDb) for a field's own appearance stream - any value
@@ -65,6 +86,6 @@ def fill_pdf_form(form_bytes: bytes, values: dict[str, str]) -> FormFillResult:
     return FormFillResult(
         filled_pdf=doc.tobytes(deflate=True, garbage=4),  # type: ignore[no-untyped-call]
         filled_fields=filled,
-        unmatched_values=sorted(remaining_keys),
+        unmatched_values=sorted(set(keys_by_normalized.values()) - matched_keys),
         empty_widgets=empty_widgets,
     )
