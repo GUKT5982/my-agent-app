@@ -40,6 +40,14 @@ DEFAULT_MIN_OSD_CONFIDENCE = 1.0
 # accuracy and memory/time cost per page.
 DEFAULT_ZOOM = 2.0
 
+# PyMuPDF's repair mode does not reject non-PDF input: handed an HTML file
+# it returns a document with fabricated pages (23 of them for a 10KB page),
+# which are then rasterized and OCR'd as if they were real scans. Requiring
+# the PDF header keeps that garbage out. The spec puts it at byte 0, but
+# readers tolerate leading junk, so scan a small window like they do.
+PDF_HEADER = b"%PDF-"
+PDF_HEADER_SEARCH_WINDOW = 1024
+
 
 @dataclass
 class PageResult:
@@ -109,7 +117,7 @@ def extract_pdf_text(
     if resolved_cmd:
         pytesseract.pytesseract.tesseract_cmd = resolved_cmd
 
-    doc = _open_document(pdf_bytes)
+    doc = open_pdf(pdf_bytes)
     if doc is None:
         return ExtractionResult(error="Could not open file: not a valid PDF")
     if doc.needs_pass:
@@ -152,15 +160,14 @@ def extract_pdf_text(
     return result
 
 
-def _open_document(pdf_bytes: bytes) -> pymupdf.Document | None:
-    """Open a PDF from bytes, returning None (never raising) on failure."""
+def open_pdf(pdf_bytes: bytes) -> pymupdf.Document | None:
+    """Open a PDF from bytes, returning None (never raising) if it isn't one."""
+    if PDF_HEADER not in pdf_bytes[:PDF_HEADER_SEARCH_WINDOW]:
+        return None
     try:
-        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
+        return pymupdf.open(stream=pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
     except Exception:
         return None
-    if doc.page_count == 0 and len(pdf_bytes) == 0:
-        return None
-    return doc
 
 
 def _extract_page(

@@ -175,3 +175,29 @@ def test_extract_corrupted_pdf_bytes() -> None:
     result = extract_pdf_text(b"not a real pdf")
     assert result.error is not None
     assert result.page_count == 0
+
+
+def test_extract_empty_bytes() -> None:
+    result = extract_pdf_text(b"")
+    assert result.error is not None
+    assert result.page_count == 0
+
+
+def test_extract_non_pdf_file_is_rejected() -> None:
+    # PyMuPDF's repair mode opens arbitrary non-PDF bytes as a document with
+    # fabricated pages (an HTML file this size yields ~23), which would then
+    # be rasterized and OCR'd and reported as a successful extraction.
+    html = b"<html><body>" + b"<p>hello world</p>" * 500 + b"</body></html>"
+    result = extract_pdf_text(html)
+    assert result.error is not None
+    assert result.page_count == 0
+    assert result.pages == []
+
+
+def test_extract_tolerates_junk_before_pdf_header() -> None:
+    # Some generators emit whitespace/junk ahead of the header; real readers
+    # accept those, so the header check must not be a strict prefix match.
+    pdf_bytes = _make_pdf(with_text="Header is not at byte zero here.")
+    result = extract_pdf_text(b"\r\n   \r\n" + pdf_bytes)
+    assert result.error is None
+    assert result.page_count == 1

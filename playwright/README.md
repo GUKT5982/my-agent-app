@@ -67,24 +67,20 @@ View the HTML report after a run: `npx playwright show-report`.
   actually populated correctly from `extracted_fields`, independent of
   whether the real model is reachable
 
-## Known edge case found while writing the UI test
+## Bug this suite found (now fixed)
 
-`extract_pdf_text`'s `_open_document` (`src/agent/pdf_extraction.py:161`)
-only treats a 0-page PyMuPDF result as an open failure when the input bytes
-were *also* empty:
+Uploading a non-PDF file through the UI came back as a *successful*
+extraction instead of an error. The open step only rejected a 0-page
+PyMuPDF result when the input bytes were also empty, and PyMuPDF's repair
+mode does not reject non-PDF input at all: handed an HTML file it returned
+a document with fabricated pages (23 of them for a 10KB page), each then
+rasterized and OCR'd as if it were a real scan. The form-template side had
+the same hole: a non-PDF template came back, without any error or warning,
+as a "filled form" of fabricated pages that also got saved to disk.
 
-```python
-if doc.page_count == 0 and len(pdf_bytes) == 0:
-    return None
-```
-
-PyMuPDF's repair mode can still "open" some non-PDF files (e.g. an HTML
-page) without raising, sometimes reporting a nonzero page count from
-garbage structure. Plain short non-PDF bytes (e.g. a `.txt` file) reliably
-hit the intended `error: "Could not open file: not a valid PDF"` path — the
-UI test at `tests/ui/pdf-tester.spec.ts` uses that case, since asserting on
-PyMuPDF's repair-mode behavior for arbitrary structured junk would be
-non-deterministic. Not fixed here since it wasn't in scope for this UI
-page — flagging it in case the graph's input validation should reject
-non-PDF uploads more strictly regardless of what PyMuPDF's repair mode
-manages to parse out of them.
+Both now go through `open_pdf` in `src/agent/pdf_extraction.py`, which
+requires the `%PDF-` header (searched in the first 1KB, so PDFs with
+leading junk still open) before handing bytes to PyMuPDF. Covered by
+`test_extract_non_pdf_file_is_rejected`,
+`test_extract_tolerates_junk_before_pdf_header` and
+`test_fill_rejects_non_pdf_template`.
