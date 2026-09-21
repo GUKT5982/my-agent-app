@@ -54,9 +54,18 @@ tags:
 > - เทสต์ใหม่ 8 ตัวใน `tests/unit_tests/test_form_filling.py` รวมทั้งชุด **40 ผ่าน / 3 skip**
 
 > [!success] Git / Pull Request
-> - Commit ทั้งหมดอยู่ใน branch `feature/pdf-extraction-and-quote-to-form` (ไม่แตะ `master` โดยตรง)
-> - Push ขึ้น GitHub แล้ว และเปิด PR ไว้ให้: **[PR #1](https://github.com/GUKT5982/my-agent-app/pull/1)**
-> - รอ review/merge จากผู้ใช้
+> - งานทั้งหมดทำบน branch `feature/pdf-extraction-and-quote-to-form` (ไม่แตะ `master` โดยตรง)
+> - 2026-09-21: **[PR #1](https://github.com/GUKT5982/my-agent-app/pull/1) merge เข้า `master` แล้ว** ด้วย merge commit `dfca519` — commit ทั้ง 14 ตัวยังอยู่ครบพร้อมวันที่เดิม branch เดิมยังไม่ได้ลบ
+
+> [!tip] ทำไม contribution graph ถึงไม่ขึ้น (และวิธีแก้)
+> 2026-09-21: กราฟบนโปรไฟล์ GitHub ไม่ขึ้นสีตามวันที่ทำงาน ทั้งที่ commit ครบ — **GitHub นับเฉพาะ commit ที่อยู่บน default branch (`master`) เท่านั้น** commit บน branch อื่นไม่นับจนกว่าจะ merge และการเปิด PR ค้างไว้เฉยๆ ก็ไม่นับ
+> - เช็คว่า GitHub นับให้เท่าไหร่จริงๆ:
+>   ```bash
+>   gh api graphql -f query='{ viewer { contributionsCollection(from: "2026-09-01T00:00:00Z", to: "2026-09-21T23:59:59Z") { totalCommitContributions } } }'
+>   ```
+>   ก่อน merge ตอบ `3` หลัง merge ตอบ `17` (ขึ้นครบทั้ง 8 / 11 / 16 / 17 / 21 ก.ย.)
+> - เช็คว่า email ผูกกับบัญชีหรือยัง (สาเหตุยอดฮิตอีกข้อ): `gh api repos/<owner>/<repo>/commits/<sha> --jq .author.login` ถ้าได้ `null` แปลว่าไม่ผูก
+> - **ตอน merge ห้ามใช้ squash** ถ้าอยากให้กราฟกระจายตามวันจริง เพราะ squash ยุบเหลือ commit เดียวลงวันที่ merge ใช้ merge commit หรือ rebase แทน
 
 ---
 
@@ -68,7 +77,7 @@ tags:
 >   - [ ] ใบเสนอราคาจริงจากผู้ขายจริง (โครงสร้าง/ภาษาอาจต่างจาก demo — Gemma extraction เป็น general-purpose แต่ควรทดสอบยืนยัน)
 > - [ ] **รัน validate กับไฟล์ทั้งหมดใน `test_pdfs`** (1,077 ไฟล์, ~868MB) — ตอนนี้สุ่มทดสอบแค่บางไฟล์ ยังไม่ได้รันชุดเต็มด้วย `scripts/validate_pdf_extraction.py` (คาดว่าใช้เวลานาน เพราะ OCR ช้า)
 >   - ผลที่ได้เอาไปเปิดใน `static/validation-dashboard/` ได้เลย จะบอกเองว่าควรไล่แก้อะไรก่อน และประมาณเวลาที่เหลือให้
-> - [ ] **Review และ merge PR #1**
+> - [x] ~~Review และ merge PR #1~~ — merge แล้ว 2026-09-21
 
 > [!warning] ปัญหา environment: port 2024 ใช้ไม่ได้ถาวร
 > เจอ ghost process ค้างใน TCP table ของเครื่องที่ฆ่าไม่ตาย ตอนนี้ใช้ port 2777 แทนชั่วคราว (`langgraph dev --port 2777`)
