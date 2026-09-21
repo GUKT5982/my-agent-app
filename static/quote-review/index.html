@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote Review &amp; Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f4f6f3;
+    --card: #fcfdfb;
+    --ink: #1b2320;
+    --muted: #56625c;
+    --faint: #7f8a84;
+    --rule: #dce2dd;
+    --track: #e5eae5;
+    --accent: #2d5b88;
+    --pass: #1d7a4b;
+    --skip: #8f5d00;
+    --fail: #b42318;
+    --note-bg: #e9ede9;
+    --sans: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #111513; --card: #171c19; --ink: #e3e8e4; --muted: #9fa9a3;
+      --faint: #737e78; --rule: #2a322e; --track: #222925; --accent: #8db3db;
+      --pass: #62cb92; --skip: #e2ab4a; --fail: #f2796c; --note-bg: #1c221f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #111513; --card: #171c19; --ink: #e3e8e4; --muted: #9fa9a3;
+    --faint: #737e78; --rule: #2a322e; --track: #222925; --accent: #8db3db;
+    --pass: #62cb92; --skip: #e2ab4a; --fail: #f2796c; --note-bg: #1c221f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 0.9375rem; line-height: 1.7;
+    padding-block: 40px 72px; padding-inline: 16px;
+  }
+  .page { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 40px; }
+  h1, h2 { margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--mono); }
+  button, select, input { font-family: inherit; font-size: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: 1.875rem; line-height: 1.35; font-weight: 600; }
+  h2 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+  .lead { color: var(--muted); max-width: 66ch; }
+  .caption { color: var(--faint); font-size: 0.8125rem; line-height: 1.6; }
+
+  header.head { display: flex; flex-direction: column; gap: 10px; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  .ghost { background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 14px; font-size: 0.8125rem; cursor: pointer; color: var(--muted); }
+  .ghost:hover { border-color: var(--faint); color: var(--ink); }
+  .btn { background: var(--accent); color: var(--ground); border: 0; border-radius: 8px; padding: 8px 18px; font-weight: 600; font-size: 0.875rem; cursor: pointer; }
+  .btn:hover { filter: brightness(1.08); }
+
+  .drop { border: 1px dashed var(--rule); border-radius: 12px; background: var(--card); padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .drop.over { border-color: var(--accent); background: var(--note-bg); }
+  .drop h2 { font-size: 1rem; }
+  .drop pre { margin: 0; background: var(--note-bg); border-radius: 8px; padding: 10px 14px; font-family: var(--mono); font-size: 0.8125rem; color: var(--muted); overflow-x: auto; max-width: 100%; white-space: pre; line-height: 1.8; }
+  .err { color: var(--fail); font-size: 0.8125rem; }
+
+  .hero { display: flex; flex-direction: column; gap: 4px; }
+  .hero .value { font-size: 3.25rem; line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }
+
+  #app { display: flex; flex-direction: column; gap: 36px; }
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .sec-head { display: flex; flex-direction: column; gap: 2px; }
+
+  /* scoreboard rows */
+  .rows { display: flex; flex-direction: column; gap: 4px; }
+  .srow {
+    display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) auto;
+    align-items: center; gap: 6px 16px; min-height: 32px; padding: 3px 8px; border-radius: 8px;
+  }
+  .srow .name { font-size: 0.875rem; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track { height: 10px; border-radius: 5px; background: var(--track); }
+  .fill { height: 10px; border-radius: 0 4px 4px 0; background: var(--c, var(--pass)); min-width: 2px; }
+  .srow .num { font-family: var(--mono); font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .srow .num b { color: var(--ink); font-weight: 500; }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .toolbar input[type="search"] { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; font-size: 0.8125rem; min-height: 32px; flex: 1 1 160px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 2px 13px; border-radius: 999px; border: 1px solid var(--rule); background: none; cursor: pointer; font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
+  .chip:hover { border-color: var(--faint); color: var(--ink); }
+  .chip[aria-pressed="true"] { border-color: var(--faint); color: var(--ink); background: var(--note-bg); }
+  .chip .n { font-family: var(--mono); font-size: 0.75rem; color: var(--faint); }
+
+  /* record cards */
+  .queue { display: flex; flex-direction: column; gap: 8px; }
+  details.rec { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); overflow: hidden; }
+  details.rec[open] { border-color: var(--faint); }
+  summary.recsum { list-style: none; cursor: pointer; padding: 12px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; }
+  summary.recsum::-webkit-details-marker { display: none; }
+  summary.recsum:hover { background: var(--note-bg); }
+  .rid { font-family: var(--mono); font-size: 0.8125rem; color: var(--faint); }
+  .rtitle { min-width: 0; }
+  .rtitle .t { font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rtitle .s { font-size: 0.75rem; color: var(--faint); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 0.6875rem; font-family: var(--mono); padding: 1px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+  .badge.todo { color: var(--faint); }
+  .badge.ok { color: var(--pass); }
+  .badge.bad { color: var(--fail); }
+  .badge.broken { color: var(--skip); }
+
+  .recbody { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--rule); }
+  .frow { display: grid; grid-template-columns: minmax(110px, 150px) minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 4px 0; }
+  .frow .fname { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+  .frow .fval { font-size: 0.875rem; overflow-wrap: anywhere; }
+  .frow .fval.blank { color: var(--faint); font-style: italic; }
+  .verdict { display: inline-flex; gap: 4px; }
+  .verdict button { border: 1px solid var(--rule); background: none; border-radius: 999px; min-width: 32px; min-height: 26px; cursor: pointer; font-size: 0.8125rem; color: var(--faint); line-height: 1; }
+  .verdict button:hover { border-color: var(--faint); color: var(--ink); }
+  .verdict button[aria-pressed="true"][data-v="ok"] { color: var(--pass); border-color: var(--pass); }
+  .verdict button[aria-pressed="true"][data-v="bad"] { color: var(--fail); border-color: var(--fail); }
+  .verdict button[aria-pressed="true"][data-v="skip"] { color: var(--muted); border-color: var(--faint); }
+  .fix { grid-column: 2 / -1; }
+  .fix input { width: 100%; background: var(--ground); border: 1px solid var(--rule); border-radius: 8px; padding: 5px 9px; font-size: 0.8125rem; font-family: var(--mono); }
+
+  table.items { border-collapse: collapse; width: 100%; font-size: 0.75rem; font-family: var(--mono); }
+  table.items th, table.items td { border-bottom: 1px solid var(--rule); padding: 4px 8px; text-align: left; }
+  table.items th { color: var(--muted); font-weight: 500; }
+  table.items td.n { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .note { background: var(--note-bg); border-radius: 8px; padding: 8px 12px; font-size: 0.8125rem; color: var(--muted); }
+  .note.bad { color: var(--fail); }
+  .note .p { font-family: var(--mono); font-size: 0.75rem; overflow-wrap: anywhere; }
+
+  .out { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .empty { color: var(--faint); font-size: 0.875rem; }
+
+  @media (max-width: 620px) {
+    .srow { grid-template-columns: minmax(0, 1fr) auto; }
+    .srow .track { grid-column: 1 / -1; }
+    .frow { grid-template-columns: minmax(0, 1fr) auto; }
+    .hero .value { font-size: 2.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="head">
+    <div class="head-row">
+      <div>
+        <p class="eyebrow">my-agent-app · quote to form</p>
+        <h1>Quote Review &amp; Scoreboard</h1>
+      </div>
+      <button class="ghost" id="theme">สลับธีม</button>
+    </div>
+    <p class="lead">ตรวจผลที่ระบบแกะไว้ใน <code>data/quotes.db</code> ทีละฟิลด์ว่าถูกหรือผิด — ผลที่กดสะสมเป็นทั้งคะแนนความแม่นยำรายฟิลด์ และชุดเฉลย (golden set) สำหรับวัด regression ตอนแก้ prompt</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <div>
+      <h2>เปิดไฟล์ผลการแกะ</h2>
+      <p class="caption">ลากไฟล์ <code>quote_records.json</code> มาวาง หรือกดเลือกไฟล์</p>
+    </div>
+    <pre>python scripts/export_quote_records.py</pre>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="pick">เลือกไฟล์</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+      <span class="caption" id="loaded"></span>
+    </div>
+    <p class="err" id="loaderr" hidden></p>
+  </div>
+
+  <div id="app" hidden>
+
+    <div class="hero">
+      <p class="eyebrow">ความแม่นยำจากที่ตรวจแล้ว</p>
+      <p class="value" id="heroValue">—</p>
+      <p class="caption" id="heroSub"></p>
+    </div>
+
+    <section>
+      <div class="sec-head">
+        <h2>คะแนนรายฟิลด์</h2>
+        <p class="caption">นับเฉพาะฟิลด์ที่กดตรวจแล้ว — ฟิลด์ที่ถูกน้อยที่สุดคือจุดที่ควรแก้ prompt ก่อน</p>
+      </div>
+      <div class="rows" id="score"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>คิวตรวจ</h2>
+        <p class="caption" id="queueCaption"></p>
+      </div>
+      <div class="toolbar">
+        <button class="chip" data-filter="all" aria-pressed="true">ทั้งหมด <span class="n" data-count="all">0</span></button>
+        <button class="chip" data-filter="todo" aria-pressed="false">ยังไม่ตรวจ <span class="n" data-count="todo">0</span></button>
+        <button class="chip" data-filter="bad" aria-pressed="false">มีผิด <span class="n" data-count="bad">0</span></button>
+        <button class="chip" data-filter="ok" aria-pressed="false">ถูกหมด <span class="n" data-count="ok">0</span></button>
+        <button class="chip" data-filter="broken" aria-pressed="false">แกะไม่ได้ <span class="n" data-count="broken">0</span></button>
+        <input type="search" id="q" placeholder="ค้นหา vendor / เลขที่ใบเสนอราคา">
+      </div>
+      <div class="queue" id="queue"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>ชุดเฉลย</h2>
+        <p class="caption">เก็บผลที่ตรวจไว้เป็นไฟล์ เพื่อเอากลับมาต่อ หรือใช้เป็นเกณฑ์วัดรอบหน้า</p>
+      </div>
+      <div class="out">
+        <button class="btn" id="dlVerdicts">ดาวน์โหลดผลการตรวจ</button>
+        <button class="ghost" id="importVerdicts">นำเข้าผลการตรวจ</button>
+        <input type="file" id="verdictFile" accept=".json,application/json" hidden>
+        <button class="ghost" id="reset">โหลดไฟล์อื่น</button>
+      </div>
+      <p class="caption" id="saveNote"></p>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FIELDS = [
+    { key: "vendor_name", label: "vendor_name" },
+    { key: "quote_no", label: "quote_no" },
+    { key: "quote_date", label: "quote_date" },
+    { key: "buyer_name", label: "buyer_name" },
+    { key: "subtotal", label: "subtotal" },
+    { key: "vat", label: "vat" },
+    { key: "grand_total", label: "grand_total" }
+  ];
+  // Item rows are judged one column at a time: "were the quantities right?"
+  var ITEM_FIELDS = [
+    { key: "items_desc", label: "items · description", col: "description" },
+    { key: "items_qty", label: "items · qty", col: "qty" },
+    { key: "items_price", label: "items · unit_price", col: "unit_price" },
+    { key: "items_amount", label: "items · amount", col: "amount" }
+  ];
+  var ALL_FIELDS = FIELDS.concat(ITEM_FIELDS);
+
+  var S = { data: null, name: "", verdicts: {}, filter: "all", q: "" };
+
+  function $(id) { return document.getElementById(id); }
+  function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* blocked */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storeKey() { return "review:verdicts:" + ((S.data && S.data.db_path) || S.name); }
+
+  function recVerdicts(id) {
+    if (!S.verdicts[id]) S.verdicts[id] = {};
+    return S.verdicts[id];
+  }
+
+  function isBroken(r) { return !!r.extraction_error; }
+
+  function statusOf(r) {
+    if (isBroken(r)) return "broken";
+    var v = S.verdicts[r.id] || {};
+    var judged = 0, bad = 0;
+    ALL_FIELDS.forEach(function (f) {
+      var e = v[f.key];
+      if (!e || e.v === "skip") return;
+      judged++;
+      if (e.v === "bad") bad++;
+    });
+    if (!judged) return "todo";
+    return bad ? "bad" : "ok";
+  }
+
+  function itemValues(r, col) {
+    return (r.items || []).map(function (it) { return it[col] || ""; });
+  }
+
+  function valueOf(r, f) {
+    if (f.col) {
+      var vals = itemValues(r, f.col).filter(function (s) { return s !== ""; });
+      return vals.join(" · ");
+    }
+    return r[f.key] || "";
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    $("drop").hidden = true;
+    $("app").hidden = false;
+    $("loaded").textContent = S.name ? "กำลังดู: " + S.name : "";
+    renderScore();
+    renderQueue();
+    var n = Object.keys(S.verdicts).length;
+    $("saveNote").textContent = n
+      ? "บันทึกไว้ในเบราว์เซอร์นี้แล้ว " + n + " รายการ — ดาวน์โหลดไว้ด้วยถ้าจะย้ายเครื่อง"
+      : "ยังไม่ได้ตรวจรายการไหน";
+  }
+
+  function renderScore() {
+    var stats = {};
+    ALL_FIELDS.forEach(function (f) { stats[f.key] = { ok: 0, bad: 0 }; });
+
+    Object.keys(S.verdicts).forEach(function (id) {
+      var v = S.verdicts[id];
+      ALL_FIELDS.forEach(function (f) {
+        var e = v[f.key];
+        if (!e || e.v === "skip") return;
+        if (e.v === "ok") stats[f.key].ok++;
+        else if (e.v === "bad") stats[f.key].bad++;
+      });
+    });
+
+    var totalOk = 0, totalJudged = 0;
+    ALL_FIELDS.forEach(function (f) {
+      totalOk += stats[f.key].ok;
+      totalJudged += stats[f.key].ok + stats[f.key].bad;
+    });
+
+    var reviewed = (S.data.records || []).filter(function (r) { return statusOf(r) === "ok" || statusOf(r) === "bad"; }).length;
+    var reviewable = (S.data.records || []).filter(function (r) { return !isBroken(r); }).length;
+
+    $("heroValue").textContent = totalJudged ? Math.round(100 * totalOk / totalJudged) + "%" : "—";
+    $("heroSub").textContent = totalJudged
+      ? totalOk + " ถูก จาก " + totalJudged + " ฟิลด์ที่ตรวจ · ตรวจแล้ว " + reviewed + "/" + reviewable + " รายการ"
+      : "ยังไม่มีการตรวจ — กด ✓ หรือ ✗ ที่ฟิลด์ในคิวด้านล่างเพื่อเริ่ม";
+
+    var host = $("score");
+    host.innerHTML = "";
+    var judgedFields = ALL_FIELDS.filter(function (f) { return stats[f.key].ok + stats[f.key].bad > 0; });
+
+    if (!judgedFields.length) {
+      host.appendChild(el("p", "empty", "ยังไม่มีฟิลด์ไหนถูกตรวจ"));
+      return;
+    }
+
+    judgedFields
+      .slice()
+      .sort(function (a, b) {
+        var ra = stats[a.key].ok / (stats[a.key].ok + stats[a.key].bad);
+        var rb = stats[b.key].ok / (stats[b.key].ok + stats[b.key].bad);
+        return ra - rb;
+      })
+      .forEach(function (f) {
+        var s = stats[f.key];
+        var judged = s.ok + s.bad;
+        var pct = Math.round(100 * s.ok / judged);
+        var row = el("div", "srow");
+        row.style.setProperty("--c", pct >= 90 ? "var(--pass)" : pct >= 60 ? "var(--skip)" : "var(--fail)");
+        row.appendChild(el("span", "name", f.label));
+        var track = el("div", "track");
+        var fill = el("div", "fill");
+        fill.style.width = Math.max(2, pct) + "%";
+        track.appendChild(fill);
+        row.appendChild(track);
+        var num = el("span", "num");
+        num.innerHTML = "<b>" + pct + "%</b> · " + s.ok + "/" + judged;
+        row.appendChild(num);
+        host.appendChild(row);
+      });
+  }
+
+  function renderQueue() {
+    var records = S.data.records || [];
+    var counts = { all: records.length, todo: 0, ok: 0, bad: 0, broken: 0 };
+    records.forEach(function (r) { counts[statusOf(r)]++; });
+    Object.keys(counts).forEach(function (k) {
+      var n = document.querySelector('[data-count="' + k + '"]');
+      if (n) n.textContent = String(counts[k]);
+    });
+
+    var q = S.q.toLowerCase();
+    var shown = records.filter(function (r) {
+      if (S.filter !== "all" && statusOf(r) !== S.filter) return false;
+      if (!q) return true;
+      return ((r.vendor_name || "") + " " + (r.quote_no || "")).toLowerCase().indexOf(q) >= 0;
+    });
+
+    $("queueCaption").textContent = "แสดง " + shown.length + " จาก " + records.length +
+      " รายการ · รายการที่แกะไม่ได้ไม่ถูกนับในคะแนน";
+
+    var host = $("queue");
+    host.innerHTML = "";
+    if (!shown.length) {
+      host.appendChild(el("p", "empty", "ไม่มีรายการที่ตรงกับตัวกรอง"));
+      return;
+    }
+    shown.forEach(function (r) { host.appendChild(recordCard(r)); });
+  }
+
+  function recordCard(r) {
+    var d = document.createElement("details");
+    d.className = "rec";
+
+    var sum = document.createElement("summary");
+    sum.className = "recsum";
+    sum.appendChild(el("span", "rid", "#" + r.id));
+
+    var title = el("div", "rtitle");
+    title.appendChild(el("p", "t", r.vendor_name || "(ไม่มีชื่อผู้ขาย)"));
+    title.appendChild(el("p", "s", [r.quote_no, r.quote_date, (r.created_at || "").slice(0, 16).replace("T", " ")]
+      .filter(Boolean).join(" · ")));
+    sum.appendChild(title);
+
+    var st = statusOf(r);
+    sum.appendChild(el("span", "badge " + st,
+      st === "broken" ? "แกะไม่ได้" : st === "todo" ? "ยังไม่ตรวจ" : st === "ok" ? "ถูกหมด" : "มีผิด"));
+    d.appendChild(sum);
+
+    var body = el("div", "recbody");
+
+    if (r.extraction_error) {
+      var note = el("div", "note bad");
+      note.appendChild(el("p", null, "แกะข้อมูลไม่สำเร็จ — ไม่นับเข้าคะแนน"));
+      note.appendChild(el("p", "p", r.extraction_error));
+      body.appendChild(note);
+    }
+
+    FIELDS.forEach(function (f) { body.appendChild(fieldRow(r, f)); });
+
+    if ((r.items || []).length) {
+      body.appendChild(itemsTable(r));
+    } else {
+      body.appendChild(el("p", "caption", "ไม่มีรายการสินค้าในผลการแกะ"));
+    }
+    ITEM_FIELDS.forEach(function (f) { body.appendChild(fieldRow(r, f)); });
+
+    if ((r.fill_warnings || []).length) {
+      var w = el("div", "note");
+      w.appendChild(el("p", null, "คำเตือนตอนกรอกฟอร์ม:"));
+      r.fill_warnings.forEach(function (m) { w.appendChild(el("p", "p", m)); });
+      body.appendChild(w);
+    }
+    if (r.filled_form_path) {
+      var p = el("div", "note");
+      p.appendChild(el("p", null, "ฟอร์มที่กรอกแล้ว:"));
+      p.appendChild(el("p", "p", r.filled_form_path));
+      body.appendChild(p);
+    }
+
+    d.appendChild(body);
+    return d;
+  }
+
+  function itemsTable(r) {
+    var t = document.createElement("table");
+    t.className = "items";
+    var thead = document.createElement("thead");
+    var htr = document.createElement("tr");
+    ["#", "description", "qty", "unit_price", "amount"].forEach(function (h) {
+      htr.appendChild(el("th", null, h));
+    });
+    thead.appendChild(htr);
+    t.appendChild(thead);
+    var tb = document.createElement("tbody");
+    (r.items || []).forEach(function (it, i) {
+      var tr = document.createElement("tr");
+      tr.appendChild(el("td", null, String(i + 1)));
+      tr.appendChild(el("td", null, it.description || ""));
+      tr.appendChild(el("td", "n", it.qty || ""));
+      tr.appendChild(el("td", "n", it.unit_price || ""));
+      tr.appendChild(el("td", "n", it.amount || ""));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    return t;
+  }
+
+  function fieldRow(r, f) {
+    var wrap = el("div", "frow");
+    wrap.appendChild(el("span", "fname", f.label));
+
+    var raw = valueOf(r, f);
+    var val = el("span", "fval" + (raw ? "" : " blank"), raw || "(ว่าง)");
+    wrap.appendChild(val);
+
+    var v = recVerdicts(r.id)[f.key];
+    var group = el("span", "verdict");
+    [["ok", "✓"], ["bad", "✕"], ["skip", "–"]].forEach(function (pair) {
+      var b = el("button", null, pair[1]);
+      b.type = "button";
+      b.setAttribute("data-v", pair[0]);
+      b.setAttribute("aria-pressed", String(!!v && v.v === pair[0]));
+      b.title = pair[0] === "ok" ? "ถูก" : pair[0] === "bad" ? "ผิด" : "ข้าม";
+      b.addEventListener("click", function () {
+        setVerdict(r.id, f.key, v && v.v === pair[0] ? null : pair[0]);
+      });
+      group.appendChild(b);
+    });
+    wrap.appendChild(group);
+
+    if (v && v.v === "bad") {
+      var fix = el("div", "fix");
+      var input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "ค่าที่ถูกต้องคือ… (ไม่ใส่ก็ได้)";
+      input.value = v.expected || "";
+      input.addEventListener("change", function () {
+        recVerdicts(r.id)[f.key] = { v: "bad", expected: input.value };
+        persist();
+        renderScore();
+      });
+      fix.appendChild(input);
+      wrap.appendChild(fix);
+    }
+
+    return wrap;
+  }
+
+  function setVerdict(id, key, verdict) {
+    var v = recVerdicts(id);
+    if (!verdict) delete v[key];
+    else v[key] = { v: verdict, expected: (v[key] && v[key].expected) || "" };
+    if (!Object.keys(v).length) delete S.verdicts[id];
+    persist();
+    rerenderKeepingOpen();
+  }
+
+  function rerenderKeepingOpen() {
+    var open = {};
+    document.querySelectorAll("details.rec").forEach(function (d, i) { open[i] = d.open; });
+    var scroll = window.scrollY;
+    render();
+    document.querySelectorAll("details.rec").forEach(function (d, i) { d.open = !!open[i]; });
+    window.scrollTo(0, scroll);
+  }
+
+  function persist() { save(storeKey(), JSON.stringify(S.verdicts)); }
+
+  /* ---------- controls ---------- */
+  document.querySelectorAll(".chip").forEach(function (c) {
+    c.addEventListener("click", function () {
+      S.filter = c.getAttribute("data-filter");
+      document.querySelectorAll(".chip").forEach(function (o) {
+        o.setAttribute("aria-pressed", String(o === c));
+      });
+      renderQueue();
+    });
+  });
+
+  $("q").addEventListener("input", function (e) { S.q = e.target.value; renderQueue(); });
+
+  /* The golden set: for every judged field, the value it SHOULD have. A field
+     marked correct is its own answer; a field marked wrong takes the typed
+     correction. Records are keyed by quote_no so a later run of the same
+     quotation can be scored against this - see scripts/score_extraction.py. */
+  function goldenSet() {
+    var out = {};
+    (S.data.records || []).forEach(function (r) {
+      var v = S.verdicts[r.id];
+      if (!v) return;
+      var fields = {};
+      ALL_FIELDS.forEach(function (f) {
+        var e = v[f.key];
+        if (!e || e.v === "skip") return;
+        fields[f.key] = {
+          verdict: e.v,
+          expected: e.v === "ok" ? valueOf(r, f) : (e.expected || "")
+        };
+      });
+      if (!Object.keys(fields).length) return;
+      out[r.quote_no || ("id:" + r.id)] = {
+        record_id: r.id,
+        quote_no: r.quote_no || "",
+        vendor_name: r.vendor_name || "",
+        fields: fields
+      };
+    });
+    return out;
+  }
+
+  $("dlVerdicts").addEventListener("click", function () {
+    var payload = {
+      version: 2,
+      db_path: (S.data && S.data.db_path) || "",
+      reviewed_at: new Date().toISOString(),
+      verdicts: S.verdicts,
+      golden: goldenSet()
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "quote_review_verdicts.json";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $("importVerdicts").addEventListener("click", function () { $("verdictFile").click(); });
+  $("verdictFile").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var d = JSON.parse(String(rd.result));
+        S.verdicts = (d && d.verdicts) || {};
+        persist();
+        render();
+      } catch (err) {
+        $("saveNote").textContent = "นำเข้าไม่ได้: " + err.message;
+      }
+    };
+    rd.readAsText(f);
+  });
+
+  $("reset").addEventListener("click", function () {
+    $("app").hidden = true;
+    $("drop").hidden = false;
+    $("loaderr").hidden = true;
+    window.scrollTo(0, 0);
+  });
+
+  /* ---------- loading ---------- */
+  function ingest(text, name) {
+    var data = JSON.parse(text.replace(/^﻿/, ""));
+    if (!data || !Array.isArray(data.records)) {
+      throw new Error("ไม่ใช่ไฟล์จาก export_quote_records.py (ไม่มี records)");
+    }
+    data.records.forEach(function (r) { r.id = String(r.id); });
+    S.data = data;
+    S.name = name || "";
+    S.verdicts = {};
+    var cached = load(storeKey());
+    if (cached) {
+      try { S.verdicts = JSON.parse(cached) || {}; } catch (e) { S.verdicts = {}; }
+    }
+    render();
+  }
+
+  function readFile(f) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        $("loaderr").hidden = true;
+        ingest(String(rd.result), f.name);
+      } catch (err) {
+        $("loaderr").textContent = "อ่านไฟล์ไม่ได้: " + err.message;
+        $("loaderr").hidden = false;
+      }
+    };
+    rd.onerror = function () {
+      $("loaderr").textContent = "อ่านไฟล์ไม่ได้";
+      $("loaderr").hidden = false;
+    };
+    rd.readAsText(f);
+  }
+
+  $("pick").addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function (e) { if (e.target.files[0]) readFile(e.target.files[0]); });
+
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+  $("theme").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : cur === "light" ? "dark"
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", next);
+    save("review:theme", next);
+  });
+
+  (function boot() {
+    var t = load("review:theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+=====================================================================
+ my-agent-app - Setup Guide (Windows / PowerShell)
+=====================================================================
+โปรเจกต์: LangGraph agent ที่เรียกโมเดล Gemma ผ่าน Ollama (cloud model)
+Path: C:\Users\Amaya\Desktop\agent\my-agent-app
+
+---------------------------------------------------------------------
+0) เช็คว่ามีของพวกนี้ในเครื่องหรือยัง
+---------------------------------------------------------------------
+python --version      (ต้องมี Python 3.10+)
+ollama --version       (ต้องมี Ollama app ติดตั้งแล้ว)
+
+---------------------------------------------------------------------
+1) ติดตั้ง Python dependencies ของโปรเจกต์
+---------------------------------------------------------------------
+cd C:\Users\Amaya\Desktop\agent\my-agent-app
+
+pip install -e .
+pip install "langgraph-cli[inmem]"
+pip install colorama
+
+หมายเหตุสำคัญ:
+- "pip install -e ." จะติดตั้งเฉพาะ dependencies หลัก (langgraph,
+  python-dotenv, langchain-ollama) เท่านั้น
+- คำสั่ง `langgraph` (CLI ที่ใช้รัน `langgraph dev`) มาจากแพ็กเกจ
+  langgraph-cli ซึ่งอยู่ใน dev dependency-group ของ pyproject.toml
+  ไม่ได้ถูกติดตั้งอัตโนมัติจาก "pip install -e ." เพียงคำสั่งเดียว
+  ต้องรัน "pip install langgraph-cli[inmem]" แยกต่างหากเสมอ
+  (นี่คือสาเหตุของ error "langgraph : The term 'langgraph' is not
+  recognized...")
+- ถ้าใช้ uv แทน pip ให้รัน "uv sync" คำสั่งเดียวได้เลย (uv จะติดตั้ง
+  ทั้ง dependencies หลักและ dev dependency-group ให้ครบ) แต่เครื่องนี้
+  ยังไม่มี uv ติดตั้งไว้
+- "pip install colorama" จำเป็นบน Windows เท่านั้น เพราะ langgraph
+  dev server ใช้ structlog เขียน log สี (ConsoleRenderer colors=True)
+  ถ้าไม่มี colorama จะเจอ error ตอนสั่ง "langgraph dev":
+  "SystemError: ConsoleRenderer with `colors=True` on Windows
+  requires the colorama package installed."
+
+---------------------------------------------------------------------
+2) ตั้งค่า Ollama สำหรับ cloud model (Gemma)
+---------------------------------------------------------------------
+ollama signin
+   -> จะเปิดเบราว์เซอร์ให้ยืนยันบัญชี ollama.com (ทำครั้งเดียว)
+
+ollama pull gemma4:31b-cloud
+   -> ถ้า tag นี้ไม่มีจริงบน registry คำสั่งจะ error บอกเอง
+      ให้เช็ค tag ที่ถูกต้องแล้วแก้ค่า default ในไฟล์
+      src/agent/graph.py (ตัวแปร DEFAULT_MODEL) หรือกำหนดผ่าน
+      ตัวแปรแวดล้อม OLLAMA_MODEL แทน
+
+ollama list
+   -> เช็คว่าโมเดลถูก pull มาแล้วจริง
+
+---------------------------------------------------------------------
+3) ตั้งค่าไฟล์ .env
+---------------------------------------------------------------------
+copy .env.example .env
+
+ค่าเริ่มต้นที่ตั้งไว้ใน .env.example:
+   OLLAMA_MODEL=gemma4:31b-cloud
+   OLLAMA_BASE_URL=http://localhost:11434
+
+แก้ไขค่าในไฟล์ .env ได้ตามต้องการ (เช่น เปลี่ยนชื่อโมเดล)
+
+---------------------------------------------------------------------
+4) รันเซิร์ฟเวอร์
+---------------------------------------------------------------------
+langgraph dev
+
+ถ้าสำเร็จจะเปิด LangGraph Studio ให้ทดสอบ graph ผ่านเบราว์เซอร์
+(server รันที่ http://localhost:2024 โดย default)
+
+---------------------------------------------------------------------
+5) แก้ปัญหาที่เจอบ่อย
+---------------------------------------------------------------------
+- "langgraph : The term 'langgraph' is not recognized..."
+  => ยังไม่ได้ pip install "langgraph-cli[inmem]" (ดูข้อ 1)
+
+- "SystemError: ConsoleRenderer with `colors=True` on Windows
+  requires the colorama package installed."
+  => รัน "pip install colorama" (ดูข้อ 1)
+
+- โมเดลไม่ตอบ / error เชื่อมต่อ Ollama
+  => เช็คว่า Ollama app เปิดอยู่ (ไอคอนใน system tray) และรัน
+     "ollama list" เห็นโมเดลที่ pull ไว้
+
+- Error เกี่ยวกับ cloud model / authentication
+  => รัน "ollama signin" ใหม่อีกครั้ง
+
+---------------------------------------------------------------------
+6) ฟีเจอร์ PDF extraction (graph แยกต่างหาก: pdf_extractor)
+---------------------------------------------------------------------
+ฟีเจอร์นี้ถอดข้อความจาก PDF (รวมถึงหน้าที่สแกนมาแบบกลับหัว/หมุน 90/180/270
+องศา จะถูกตรวจจับและแก้ก่อน OCR อัตโนมัติ) เป็น graph ใหม่แยกจาก graph
+"agent" (แชทกับ Gemma) เดิมโดยสิ้นเชิง ไม่กระทบการตั้งค่า Ollama/Gemma
+ในข้อ 1-5 ข้างต้น
+
+6.1) ติดตั้ง Tesseract OCR (ตัวโปรแกรมจริง ไม่ใช่ pip package)
+   วิธีที่ 1 - ติดตั้งด้วย winget (แนะนำ):
+      winget install --id UB-Mannheim.TesseractOCR -e
+
+   วิธีที่ 2 - ติดตั้งเอง:
+      โหลดตัวติดตั้งจาก https://github.com/UB-Mannheim/tesseract/wiki
+      (ค่าเริ่มต้นของตัวติดตั้งมี eng traineddata มาให้แล้ว ไม่ต้องเพิ่ม
+      language pack)
+
+   ตรวจสอบ (ต้องเปิด PowerShell/เทอร์มินัลใหม่ก่อน เพราะ PATH ที่เพิ่ง
+   อัปเดตจะไม่มีผลกับหน้าต่างที่เปิดค้างไว้อยู่แล้ว):
+      tesseract --version
+
+   ถ้ายังหา "tesseract" ไม่เจอบน PATH ให้ตั้งค่าตัวแปรแวดล้อมแทน โดยเพิ่ม
+   บรรทัดนี้ในไฟล์ .env (แก้ path ให้ตรงกับเครื่องตัวเอง):
+      TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+
+6.2) ติดตั้ง Python dependencies เพิ่ม (แยกจาก dependencies หลักในข้อ 1)
+      pip install -e ".[pdf]"
+
+   จะได้ pymupdf (อ่าน/แปลง PDF), pytesseract (เรียก Tesseract), pillow
+   (จัดการรูปภาพ), opencv-python-headless (ปรับมุมเอียงเล็กน้อยแบบ
+   best-effort หลังแก้การกลับหัว)
+
+6.3) ใช้งานผ่าน LangGraph Studio
+   รัน "langgraph dev" ตามข้อ 4 แล้วเลือก graph "pdf_extractor" จาก
+   dropdown ใน Studio แทน "agent" — input คือ pdf_base64 (สตริง PDF ที่
+   เข้ารหัส base64 แล้ว) เหมือนการอัปโหลดไฟล์จริงจาก client ไม่ใช่การพิมพ์
+   path ไฟล์ในเครื่อง
+
+6.4) ทดสอบ
+      python -m pytest tests/unit_tests/test_pdf_extraction.py -v
+      python -m pytest tests/integration_tests/test_pdf_graph.py -v
+
+   ทดสอบกับไฟล์จริงจำนวนมาก (ไม่รวมอยู่ใน make test เพราะช้า):
+      make validate_pdf_sample
+      python scripts/validate_pdf_extraction.py --sample 100 --seed 1
+
+---------------------------------------------------------------------
+7) ฟีเจอร์ auto-fill ใบเสนอราคา -> ฟอร์ม PDF (ต่อยอดจาก pdf_extractor)
+---------------------------------------------------------------------
+ถ้าส่ง form_template_base64 (ฟอร์ม PDF เปล่าที่กรอกได้ / fillable AcroForm)
+เข้ามาพร้อมกับ pdf_base64 (ใบเสนอราคา) graph "pdf_extractor" จะทำงานต่อ
+อีก 2 ขั้นหลังถอดข้อความเสร็จ: ใช้ Gemma แกะข้อมูล (ผู้ขาย, เลขที่, วันที่,
+รายการสินค้า, ยอดรวม ฯลฯ) เป็น JSON แล้วกรอกลงฟิลด์ของฟอร์มที่ชื่อตรงกัน
+อัตโนมัติ — ถ้าไม่ส่ง form_template_base64 มา จะหยุดแค่ถอดข้อความเหมือนเดิม
+(ไม่กระทบการใช้งานเดิม)
+
+7.1) สร้างไฟล์ตัวอย่างไว้ทดสอบ (ใบเสนอราคา + ฟอร์มเปล่า)
+      python scripts/generate_form_demo.py
+   จะได้ demo_quote.pdf และ demo_form.pdf ที่ root ของโปรเจกต์ (ฟิลด์ในฟอร์ม
+   ตั้งชื่อตาม convention: vendor_name, quote_no, quote_date, buyer_name,
+   item_1_desc/qty/price/amount, item_2_..., item_3_..., subtotal, vat,
+   grand_total)
+
+7.2) ข้อควรรู้: ฟอนต์ภาษาไทยในฟิลด์ฟอร์ม (AcroForm)
+   PyMuPDF's widget API รองรับแค่ฟอนต์ base-14 (Helv, Cour, TiRo, ZaDb) ซึ่ง
+   ไม่มีตัวอักษรไทย โค้ดจึงตั้งค่า NeedAppearances=True ในไฟล์ที่กรอกแล้ว
+   ให้โปรแกรมอ่าน PDF มาตรฐาน (Acrobat, Chrome, Edge, Foxit) สร้างภาพฟิลด์
+   ใหม่เองตอนเปิดไฟล์ด้วยฟอนต์ของเครื่องนั้น — ข้อความไทยจะแสดงถูกต้องใน
+   โปรแกรมพวกนี้ แต่ตัว preview ที่ render ผ่าน MuPDF/PyMuPDF โดยตรง (เช่น
+   สคริปต์เช็คไฟล์เร็วๆ) อาจเห็นข้อความไทยเพี้ยน/เว้าแหว่ง เพราะไม่ได้ re-generate
+   appearance ตาม flag นี้ — ค่าที่กรอกจริงในฟิลด์ยังถูกต้อง แค่การแสดงผลผ่าน
+   เครื่องมือ MuPDF เองมีข้อจำกัดนี้
+
+7.3) ทดสอบ
+      python -m pytest tests/unit_tests/test_form_filling.py -v
+      python -m pytest tests/integration_tests/test_quote_to_form.py -v
+
+=====================================================================

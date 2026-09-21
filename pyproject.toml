@@ -11,11 +11,18 @@ requires-python = ">=3.10"
 dependencies = [
     "langgraph>=1.0.0",
     "python-dotenv>=1.0.1",
+    "langchain-ollama>=0.3.0",
 ]
 
 
 [project.optional-dependencies]
 dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
+pdf = [
+    "pymupdf>=1.24.0",
+    "pytesseract>=0.3.13",
+    "pillow>=10.4.0",
+    "opencv-python-headless>=4.10.0.84",
+]
 
 [build-system]
 requires = ["setuptools>=83.0.0", "wheel"]
@@ -52,8 +59,20 @@ lint.ignore = [
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "UP"]
+# scripts/* holds standalone CLI tools where console output is the point.
+"scripts/*" = ["D", "T201"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[[tool.mypy.overrides]]
+# Demo/fixture generator scripts call raw pymupdf constructors densely
+# (Document, Widget, Rect, ...); pymupdf's stubs mark these as untyped, which
+# would otherwise need a `type: ignore` on nearly every call. Production
+# logic under src/ stays fully strict - see src/agent/pdf_extraction.py and
+# src/agent/form_filling.py for the same calls with per-line ignores there.
+module = "generate_form_demo"
+disallow_untyped_calls = false
+warn_return_any = false
 
 [dependency-groups]
 dev = [
@@ -62,4 +81,5 @@ dev = [
     "mypy>=1.13.0",
     "pytest>=9.0.3",
     "ruff>=0.8.2",
+    "colorama>=0.4.6; sys_platform == 'win32'",
 ]

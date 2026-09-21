@@ -1,0 +1,12 @@
+{
+  "name": "my-agent-app-playwright",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Playwright API test suite for the LangGraph server (mirrors the Bruno collection in /bruno)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

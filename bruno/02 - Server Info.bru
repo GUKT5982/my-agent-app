@@ -1,0 +1,20 @@
+meta {
+  name: 02 - Server Info
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/info
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Returns server/runtime metadata (version, host, flags). Useful to confirm
+  which langgraph-api version you're running against.
+}
