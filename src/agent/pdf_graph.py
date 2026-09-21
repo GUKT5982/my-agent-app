@@ -25,7 +25,7 @@ from langgraph.graph import StateGraph
 from langgraph.runtime import Runtime
 from typing_extensions import TypedDict
 
-from agent.form_filling import fill_pdf_form
+from agent.form_filling import fill_pdf_form, load_field_map
 from agent.pdf_extraction import extract_pdf_text
 from agent.quote_extraction import (
     QuoteFields,
@@ -56,6 +56,7 @@ class PdfContext(TypedDict, total=False):
     save_to_db: bool
     db_path: str
     forms_dir: str
+    form_mapping_path: str
 
 
 @dataclass
@@ -130,7 +131,14 @@ async def extract_quote_fields_node(
 async def fill_form_node(
     state: PdfState, runtime: Runtime[PdfContext]
 ) -> Dict[str, Any]:
-    """Fill the supplied form template with the extracted quotation fields."""
+    """Fill the supplied form template with the extracted quotation fields.
+
+    Set ``context["form_mapping_path"]`` to a file from
+    ``static/field-mapper/`` when the template's field names don't line up
+    with ours on their own ("qty1" vs "item_1_qty"). Without it, filling
+    falls back to plain name matching as before.
+    """
+    context = runtime.context or {}
     try:
         form_bytes = base64.b64decode(state.form_template_base64, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -148,8 +156,17 @@ async def fill_form_node(
     )
     values = quote_fields_to_form_values(fields)
 
-    result = await asyncio.to_thread(fill_pdf_form, form_bytes, values)
-    warnings = []
+    warnings: list[str] = []
+    field_map: dict[str, str] | None = None
+    mapping_path = context.get("form_mapping_path", "")
+    if mapping_path:
+        field_map, mapping_error = await asyncio.to_thread(load_field_map, mapping_path)
+        if mapping_error:
+            warnings.append(mapping_error)
+
+    result = await asyncio.to_thread(
+        fill_pdf_form, form_bytes, values, field_map=field_map
+    )
     if result.error:
         warnings.append(result.error)
     if result.unmatched_values:
