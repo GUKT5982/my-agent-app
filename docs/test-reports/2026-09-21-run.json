@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-21",
+  "timestamp": "2026-09-21T02:01:41.386930+00:00",
+  "label": "field mapping + review tools",
+  "totals": {
+    "tests": 43,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 3,
+    "passed": 40
+  },
+  "duration_seconds": 12.89,
+  "suites": [
+    {
+      "name": "tests/integration_tests/test_graph.py",
+      "passed": 0,
+      "failed": 0,
+      "skipped": 1,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/integration_tests/test_pdf_graph.py",
+      "passed": 0,
+      "failed": 0,
+      "skipped": 1,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/integration_tests/test_quote_to_form.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 1,
+      "duration": 0.06
+    },
+    {
+      "name": "tests/unit_tests/test_configuration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/unit_tests/test_form_filling.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.09
+    },
+    {
+      "name": "tests/unit_tests/test_pdf_extraction.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 8.53
+    },
+    {
+      "name": "tests/unit_tests/test_pdf_graph_configuration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/unit_tests/test_quote_extraction.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.02
+    },
+    {
+      "name": "tests/unit_tests/test_quote_storage.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.15
+    }
+  ],
+  "skips": [
+    {
+      "test": "tests.integration_tests.test_graph::test_agent_simple_passthrough",
+      "message": "Ollama not reachable at http://localhost:11434"
+    },
+    {
+      "test": "tests.integration_tests.test_pdf_graph::test_pdf_graph_extracts_real_file",
+      "message": "sibling test_pdfs corpus not present"
+    },
+    {
+      "test": "tests.integration_tests.test_quote_to_form::test_quote_to_form_fills_all_fields",
+      "message": "Ollama not reachable at http://localhost:11434"
+    }
+  ],
+  "failures": []
+}
