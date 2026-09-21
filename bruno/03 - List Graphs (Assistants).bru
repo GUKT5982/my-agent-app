@@ -1,0 +1,33 @@
+meta {
+  name: 03 - List Graphs (Assistants)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/assistants/search
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "limit": 10,
+    "offset": 0
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  In LangGraph Server, every graph registered in langgraph.json gets an
+  auto-created "default assistant" with the same id as the graph name. This
+  lists them - you should see one entry each for "agent" and "pdf_extractor"
+  (the two graphs registered in langgraph.json on this branch).
+}

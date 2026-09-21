@@ -1,0 +1,43 @@
+meta {
+  name: 07 - Create Thread
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/threads
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+script:post-response {
+  if (res.body && res.body.thread_id) {
+    bru.setVar("threadId", res.body.thread_id);
+  }
+}
+
+docs {
+  Requests 01-06 above all used POST /runs/wait, which is *stateless* -
+  LangGraph creates and discards an ephemeral thread internally for you.
+  
+  Real usage (e.g. a chat that needs to remember earlier turns, or a run
+  you want to inspect/resume later) goes through a persistent thread
+  instead: create one here, then run the graph *on* that thread id in
+  request 08.
+  
+  The post-response script above saves `thread_id` from this response into
+  a Bruno variable (threadId), so request 08 can reuse it automatically -
+  just run 07 then 08 in order, no copy-pasting needed.
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 01 - Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/ok
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:2024
+}
+
+docs {
+  Simplest possible request: confirms `langgraph dev` is up before trying
+  anything else. Expected response: `{"ok": true}`.
+  
+  Start the server first with:
+    langgraph dev --no-browser --port 2024
+}

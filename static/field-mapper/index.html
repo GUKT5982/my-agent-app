@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Form Field Mapper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f4f6f3;
+    --card: #fcfdfb;
+    --ink: #1b2320;
+    --muted: #56625c;
+    --faint: #7f8a84;
+    --rule: #dce2dd;
+    --track: #e5eae5;
+    --accent: #2d5b88;
+    --pass: #1d7a4b;
+    --skip: #8f5d00;
+    --fail: #b42318;
+    --note-bg: #e9ede9;
+    --sans: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #111513;
+      --card: #171c19;
+      --ink: #e3e8e4;
+      --muted: #9fa9a3;
+      --faint: #737e78;
+      --rule: #2a322e;
+      --track: #222925;
+      --accent: #8db3db;
+      --pass: #62cb92;
+      --skip: #e2ab4a;
+      --fail: #f2796c;
+      --note-bg: #1c221f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #111513;
+    --card: #171c19;
+    --ink: #e3e8e4;
+    --muted: #9fa9a3;
+    --faint: #737e78;
+    --rule: #2a322e;
+    --track: #222925;
+    --accent: #8db3db;
+    --pass: #62cb92;
+    --skip: #e2ab4a;
+    --fail: #f2796c;
+    --note-bg: #1c221f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 0.9375rem; line-height: 1.7;
+    padding-block: 40px 72px; padding-inline: 16px;
+  }
+  .page { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 40px; }
+  h1, h2 { margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--mono); }
+  button, select, input { font-family: inherit; font-size: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: 1.875rem; line-height: 1.35; font-weight: 600; }
+  h2 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+  .lead { color: var(--muted); max-width: 66ch; }
+  .caption { color: var(--faint); font-size: 0.8125rem; line-height: 1.6; }
+
+  header.head { display: flex; flex-direction: column; gap: 10px; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  .ghost {
+    background: none; border: 1px solid var(--rule); border-radius: 999px;
+    padding: 4px 14px; font-size: 0.8125rem; cursor: pointer; color: var(--muted);
+  }
+  .ghost:hover { border-color: var(--faint); color: var(--ink); }
+  .btn {
+    background: var(--accent); color: var(--ground); border: 0; border-radius: 8px;
+    padding: 8px 18px; font-weight: 600; font-size: 0.875rem; cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.08); }
+
+  .drop {
+    border: 1px dashed var(--rule); border-radius: 12px; background: var(--card);
+    padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start;
+  }
+  .drop.over { border-color: var(--accent); background: var(--note-bg); }
+  .drop h2 { font-size: 1rem; }
+  .drop pre {
+    margin: 0; background: var(--note-bg); border-radius: 8px; padding: 10px 14px;
+    font-family: var(--mono); font-size: 0.8125rem; color: var(--muted);
+    overflow-x: auto; max-width: 100%; white-space: pre; line-height: 1.8;
+  }
+  .err { color: var(--fail); font-size: 0.8125rem; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+  .tile { background: var(--card); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+  .tile .label { font-size: 0.8125rem; color: var(--muted); }
+  .tile .value { font-size: 1.5rem; font-weight: 600; line-height: 1.3; }
+  .tile .sub { font-size: 0.75rem; color: var(--faint); font-family: var(--mono); }
+
+  .meter { height: 10px; border-radius: 5px; background: var(--track); margin-top: 6px; }
+  .meter > div { height: 10px; border-radius: 0 4px 4px 0; background: var(--pass); min-width: 2px; }
+
+  #app { display: flex; flex-direction: column; gap: 36px; }
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .sec-head { display: flex; flex-direction: column; gap: 2px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .toolbar label { font-size: 0.8125rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .toolbar input[type="number"], .toolbar input[type="search"] {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 6px 10px; font-size: 0.8125rem; min-height: 32px;
+  }
+  .toolbar input[type="number"] { width: 70px; font-family: var(--mono); }
+  .toolbar input[type="search"] { flex: 1 1 160px; min-width: 130px; }
+
+  .fieldlist { display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+  .field {
+    background: var(--card); padding: 10px 14px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 14px; align-items: center;
+  }
+  .field .who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .field .wname { font-family: var(--mono); font-size: 0.8125rem; overflow-wrap: anywhere; }
+  .field .wmeta { font-size: 0.75rem; color: var(--faint); font-family: var(--mono); }
+  .field select {
+    background: var(--ground); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 6px 8px; font-size: 0.8125rem; min-height: 32px; max-width: 200px;
+  }
+  .field select.unset { color: var(--faint); }
+  .field .tag {
+    font-size: 0.6875rem; font-family: var(--mono); padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--rule); color: var(--muted); white-space: nowrap;
+  }
+  .field .tag.auto { color: var(--pass); border-color: var(--pass); }
+  .field .tag.manual { color: var(--accent); border-color: var(--accent); }
+  .field .tag.none { color: var(--faint); }
+  .field .acts { display: flex; gap: 6px; align-items: center; }
+  .field .mini {
+    background: none; border: 1px solid var(--rule); border-radius: 999px;
+    padding: 2px 10px; font-size: 0.75rem; cursor: pointer; color: var(--muted); white-space: nowrap;
+  }
+  .field .mini:hover { border-color: var(--accent); color: var(--accent); }
+  .field .hint { font-size: 0.75rem; color: var(--accent); font-family: var(--mono); }
+
+  .warn {
+    background: var(--note-bg); border-radius: 10px; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .warn .k { font-family: var(--mono); font-size: 0.8125rem; color: var(--skip); }
+
+  .out { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  pre.json {
+    margin: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 12px 16px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+    max-height: 260px; overflow: auto; white-space: pre; line-height: 1.7;
+  }
+  .empty { color: var(--faint); font-size: 0.875rem; }
+
+  @media (max-width: 620px) {
+    .field { grid-template-columns: minmax(0, 1fr); }
+    .field .acts { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="head">
+    <div class="head-row">
+      <div>
+        <p class="eyebrow">my-agent-app · quote to form</p>
+        <h1>Form Field Mapper</h1>
+      </div>
+      <button class="ghost" id="theme">สลับธีม</button>
+    </div>
+    <p class="lead">จับคู่ชื่อฟิลด์จริงของฟอร์ม (<code>qty1</code>, <code>Description 1</code>) เข้ากับค่าที่ระบบแกะได้จากใบเสนอราคา (<code>item_1_qty</code>) แล้ว export เป็น <code>form_mapping.json</code> — เจอฟอร์มใหม่ก็แก้ไฟล์นี้ ไม่ต้องแก้โค้ด</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <div>
+      <h2>เปิดไฟล์ field dump</h2>
+      <p class="caption">ลากไฟล์ <code>.fields.json</code> มาวาง หรือกดเลือกไฟล์ — ได้จากคำสั่งข้างล่างนี้</p>
+    </div>
+    <pre>python scripts/inspect_form_fields.py path/to/real_form.pdf</pre>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="pick">เลือกไฟล์</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+      <span class="caption" id="loaded"></span>
+    </div>
+    <p class="err" id="loaderr" hidden></p>
+  </div>
+
+  <div id="app" hidden>
+
+    <div class="tiles" id="tiles"></div>
+
+    <section>
+      <div class="sec-head">
+        <h2>ฟิลด์ในฟอร์ม</h2>
+        <p class="caption" id="listCaption"></p>
+      </div>
+
+      <div class="toolbar">
+        <button class="ghost" id="acceptAll">รับคำแนะนำทั้งหมด</button>
+        <button class="ghost" id="clearAll">ล้างที่จับคู่เอง</button>
+        <label>จำนวนแถวรายการ <input type="number" id="rows" min="1" max="60" value="10"></label>
+        <input type="search" id="q" placeholder="ค้นหาชื่อฟิลด์">
+        <label><input type="checkbox" id="onlyUnset"> เฉพาะที่ยังไม่จับคู่</label>
+      </div>
+
+      <div class="fieldlist" id="fields"></div>
+    </section>
+
+    <section id="gapSection">
+      <div class="sec-head">
+        <h2>ค่าที่ยังไม่มีที่ลง</h2>
+        <p class="caption">ค่าที่ระบบแกะได้แต่ไม่มีฟิลด์ไหนในฟอร์มรับไว้ — ถ้าฟอร์มไม่มีช่องให้จริงก็ไม่เป็นไร แต่ควรรู้ว่าข้อมูลหายไปตรงไหน</p>
+      </div>
+      <div id="gaps"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>ไฟล์ mapping</h2>
+        <p class="caption">บันทึกเป็น <code>form_mapping.json</code> แล้วชี้ไปที่ไฟล์นี้ด้วย context <code>form_mapping_path</code> ตอนเรียก graph</p>
+      </div>
+      <div class="out">
+        <button class="btn" id="dl">ดาวน์โหลด form_mapping.json</button>
+        <button class="ghost" id="copy">คัดลอก JSON</button>
+        <button class="ghost" id="reset">โหลดฟอร์มอื่น</button>
+      </div>
+      <pre class="json" id="preview"></pre>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Widget-name fragments that usually mean a given value key. Longest first,
+     so "subtotal" wins over "total" and "unitprice" over "price". */
+  var SYNONYMS = [
+    ["grandtotal", "grand_total"], ["nettotal", "grand_total"], ["amountdue", "grand_total"],
+    ["subtotal", "subtotal"], ["amountbeforevat", "subtotal"],
+    ["vendorname", "vendor_name"], ["suppliername", "vendor_name"],
+    ["quotationno", "quote_no"], ["quotationnumber", "quote_no"], ["quoteno", "quote_no"],
+    ["quotenumber", "quote_no"], ["documentno", "quote_no"], ["refno", "quote_no"],
+    ["quotationdate", "quote_date"], ["dateofquote", "quote_date"], ["quotedate", "quote_date"],
+    ["issuedate", "quote_date"],
+    ["customername", "buyer_name"], ["buyername", "buyer_name"], ["clientname", "buyer_name"],
+    ["billto", "buyer_name"],
+    ["description", "item_{n}_desc"], ["particulars", "item_{n}_desc"],
+    ["itemname", "item_{n}_desc"], ["desc", "item_{n}_desc"],
+    ["quantity", "item_{n}_qty"], ["qty", "item_{n}_qty"],
+    ["unitprice", "item_{n}_price"], ["priceperunit", "item_{n}_price"],
+    ["linetotal", "item_{n}_amount"], ["lineamount", "item_{n}_amount"],
+    ["vendor", "vendor_name"], ["supplier", "vendor_name"], ["seller", "vendor_name"],
+    ["customer", "buyer_name"], ["buyer", "buyer_name"], ["client", "buyer_name"],
+    ["price", "item_{n}_price"], ["rate", "item_{n}_price"],
+    ["amount", "item_{n}_amount"], ["amt", "item_{n}_amount"],
+    ["total", "grand_total"], ["vat", "vat"], ["tax", "vat"], ["date", "quote_date"]
+  ];
+
+  var S = { dump: null, name: "", manual: {}, rows: 10, q: "", onlyUnset: false };
+
+  function $(id) { return document.getElementById(id); }
+  function el(t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* blocked */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  function norm(s) { return String(s).replace(/\[\d+\]/g, "").split(".").pop().replace(/[\W_]+/g, "").toLowerCase(); }
+  function lastNumber(s) { var m = String(s).match(/(\d+)(?!.*\d)/); return m ? Number(m[1]) : null; }
+  function stripDigits(s) { return norm(s).replace(/\d+/g, ""); }
+
+  /* ---------- keys ---------- */
+  function singleKeys() { return (S.dump && S.dump.value_keys && S.dump.value_keys.single) || []; }
+  function itemTemplates() { return (S.dump && S.dump.value_keys && S.dump.value_keys.item_row) || []; }
+
+  function allKeys() {
+    var out = singleKeys().slice();
+    for (var r = 1; r <= S.rows; r++) {
+      itemTemplates().forEach(function (t) { out.push(t.replace("{n}", String(r))); });
+    }
+    return out;
+  }
+
+  /* ---------- suggestion ---------- */
+  function suggest(field) {
+    var n = norm(field.name);
+    var bare = stripDigits(field.name);
+    for (var i = 0; i < SYNONYMS.length; i++) {
+      var frag = SYNONYMS[i][0], key = SYNONYMS[i][1];
+      if (bare === frag || n === frag || bare.indexOf(frag) >= 0) {
+        if (key.indexOf("{n}") < 0) return key;
+        var row = lastNumber(field.name);
+        if (!row || row > S.rows) return null;
+        return key.replace("{n}", String(row));
+      }
+    }
+    return null;
+  }
+
+  function assignedKey(field) {
+    if (Object.prototype.hasOwnProperty.call(S.manual, field.name)) return S.manual[field.name];
+    return field.auto_match || "";
+  }
+  function originOf(field) {
+    if (Object.prototype.hasOwnProperty.call(S.manual, field.name)) return S.manual[field.name] ? "manual" : "none";
+    return field.auto_match ? "auto" : "none";
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    $("drop").hidden = true;
+    $("app").hidden = false;
+    $("loaded").textContent = S.name ? "กำลังดู: " + S.name : "";
+
+    var fields = S.dump.fields;
+    var assigned = fields.filter(function (f) { return assignedKey(f); });
+    var auto = fields.filter(function (f) { return originOf(f) === "auto"; });
+    var manual = fields.filter(function (f) { return originOf(f) === "manual"; });
+    var unset = fields.length - assigned.length;
+    var suggestable = fields.filter(function (f) { return !assignedKey(f) && suggest(f); });
+
+    var host = $("tiles");
+    host.innerHTML = "";
+    [
+      { label: "ฟิลด์ในฟอร์ม", value: fields.length, sub: S.dump.page_count + " หน้า" },
+      { label: "จับได้เองอยู่แล้ว", value: auto.length, sub: "ไม่ต้องทำอะไร" },
+      { label: "จับคู่เองแล้ว", value: manual.length, sub: manual.length ? "จะอยู่ในไฟล์ mapping" : "ยังไม่ได้จับคู่" },
+      { label: "ยังไม่จับคู่", value: unset, sub: suggestable.length ? suggestable.length + " ตัวมีคำแนะนำ" : "—" }
+    ].forEach(function (t) {
+      var c = el("div", "tile");
+      c.appendChild(el("p", "label", t.label));
+      c.appendChild(el("p", "value", String(t.value)));
+      c.appendChild(el("p", "sub", t.sub));
+      host.appendChild(c);
+    });
+
+    var cov = fields.length ? Math.round(100 * assigned.length / fields.length) : 0;
+    $("listCaption").textContent = "จะกรอกได้ " + assigned.length + " จาก " + fields.length +
+      " ฟิลด์ (" + cov + "%) — ช่องที่ปล่อยว่างไว้จะไม่ถูกกรอก";
+
+    renderFields();
+    renderGaps();
+    renderPreview();
+  }
+
+  function renderFields() {
+    var host = $("fields");
+    host.innerHTML = "";
+    var q = S.q.toLowerCase();
+    var keys = allKeys();
+
+    var shown = S.dump.fields.filter(function (f) {
+      if (S.onlyUnset && assignedKey(f)) return false;
+      if (q && f.name.toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+
+    if (!shown.length) {
+      var e = el("div", "field");
+      e.appendChild(el("p", "empty", "ไม่มีฟิลด์ที่ตรงกับตัวกรอง"));
+      host.appendChild(e);
+      return;
+    }
+
+    shown.forEach(function (f) {
+      var row = el("div", "field");
+
+      var who = el("div", "who");
+      who.appendChild(el("p", "wname", f.name));
+      who.appendChild(el("p", "wmeta", f.type + " · หน้า " + f.page));
+      row.appendChild(who);
+
+      var origin = originOf(f);
+      var tag = el("span", "tag " + origin,
+        origin === "auto" ? "จับได้เอง" : origin === "manual" ? "จับคู่เอง" : "ว่าง");
+      row.appendChild(tag);
+
+      var acts = el("div", "acts");
+      var cur = assignedKey(f);
+
+      var sel = document.createElement("select");
+      if (!cur) sel.className = "unset";
+      var none = document.createElement("option");
+      none.value = "";
+      none.textContent = "— ไม่กรอก —";
+      sel.appendChild(none);
+      keys.forEach(function (k) {
+        var o = document.createElement("option");
+        o.value = k;
+        o.textContent = k;
+        sel.appendChild(o);
+      });
+      // A dump made against a different row count can hold a key outside the list.
+      if (cur && keys.indexOf(cur) < 0) {
+        var extra = document.createElement("option");
+        extra.value = cur;
+        extra.textContent = cur;
+        sel.appendChild(extra);
+      }
+      sel.value = cur;
+      sel.addEventListener("change", function () {
+        setKey(f.name, sel.value);
+        render();
+      });
+      acts.appendChild(sel);
+
+      if (!cur) {
+        var s = suggest(f);
+        if (s) {
+          var b = el("button", "mini", "ใช้ " + s);
+          b.type = "button";
+          b.addEventListener("click", function () { setKey(f.name, s); render(); });
+          acts.appendChild(b);
+        }
+      } else if (/^item_\d+_/.test(cur) && lastNumber(f.name) != null) {
+        var p = el("button", "mini", "ใช้รูปแบบกับทุกแถว");
+        p.type = "button";
+        p.addEventListener("click", function () { applyPattern(f, cur); });
+        acts.appendChild(p);
+      }
+
+      row.appendChild(acts);
+      host.appendChild(row);
+    });
+  }
+
+  function setKey(widgetName, key) {
+    S.manual[widgetName] = key;
+    persist();
+  }
+
+  /* Take "qty1 -> item_1_qty" and fill in qty2..qtyN the same way. */
+  function applyPattern(field, key) {
+    var n1 = lastNumber(field.name);
+    var km = key.match(/^item_(\d+)_(.+)$/);
+    if (n1 == null || !km) return;
+    var offset = Number(km[1]) - n1;
+    var suffix = km[2];
+
+    var idx = field.name.lastIndexOf(String(n1));
+    var head = field.name.slice(0, idx);
+    var tail = field.name.slice(idx + String(n1).length);
+    var re = new RegExp("^" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                        "(\\d+)" + tail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$");
+
+    var applied = 0;
+    S.dump.fields.forEach(function (f) {
+      var m = f.name.match(re);
+      if (!m) return;
+      var target = Number(m[1]) + offset;
+      if (target < 1 || target > S.rows) return;
+      S.manual[f.name] = "item_" + target + "_" + suffix;
+      applied++;
+    });
+    persist();
+    render();
+    flash($("listCaption"), "ใช้รูปแบบกับ " + applied + " ฟิลด์");
+  }
+
+  function flash(node, msg) {
+    var old = node.textContent;
+    node.textContent = msg;
+    setTimeout(function () { node.textContent = old; }, 1600);
+  }
+
+  function renderGaps() {
+    var used = {};
+    S.dump.fields.forEach(function (f) {
+      var k = assignedKey(f);
+      if (k) used[k] = true;
+    });
+    var missing = singleKeys().filter(function (k) { return !used[k]; });
+    var missingRows = [];
+    for (var r = 1; r <= S.rows; r++) {
+      var none = itemTemplates().every(function (t) { return !used[t.replace("{n}", String(r))]; });
+      if (none) missingRows.push(r);
+    }
+
+    var host = $("gaps");
+    host.innerHTML = "";
+    if (!missing.length && !missingRows.length) {
+      host.appendChild(el("p", "empty", "ค่าทุกตัวมีฟิลด์รองรับครบ"));
+      return;
+    }
+    var box = el("div", "warn");
+    missing.forEach(function (k) { box.appendChild(el("p", "k", k)); });
+    if (missingRows.length) {
+      box.appendChild(el("p", "k", "แถวรายการที่ไม่มีช่อง: " + missingRows.join(", ")));
+    }
+    host.appendChild(box);
+  }
+
+  function mappingObject() {
+    var fields = {};
+    S.dump.fields.forEach(function (f) {
+      var k = assignedKey(f);
+      if (k) fields[f.name] = k;
+    });
+    return {
+      version: 1,
+      form: S.dump.form || S.name,
+      generated_by: "static/field-mapper",
+      fields: fields
+    };
+  }
+
+  function renderPreview() {
+    $("preview").textContent = JSON.stringify(mappingObject(), null, 2);
+  }
+
+  function persist() {
+    try { save("mapper:manual:" + (S.dump.form || S.name), JSON.stringify(S.manual)); } catch (e) { /* blocked */ }
+  }
+
+  /* ---------- controls ---------- */
+  $("acceptAll").addEventListener("click", function () {
+    var n = 0;
+    S.dump.fields.forEach(function (f) {
+      if (assignedKey(f)) return;
+      var s = suggest(f);
+      if (s) { S.manual[f.name] = s; n++; }
+    });
+    persist();
+    render();
+    flash($("listCaption"), "รับคำแนะนำ " + n + " ฟิลด์");
+  });
+
+  $("clearAll").addEventListener("click", function () {
+    S.manual = {};
+    persist();
+    render();
+  });
+
+  $("rows").addEventListener("change", function (e) {
+    S.rows = Math.min(60, Math.max(1, Number(e.target.value) || 1));
+    e.target.value = S.rows;
+    save("mapper:rows", String(S.rows));
+    render();
+  });
+
+  $("q").addEventListener("input", function (e) { S.q = e.target.value; renderFields(); });
+  $("onlyUnset").addEventListener("change", function (e) { S.onlyUnset = e.target.checked; renderFields(); });
+
+  $("dl").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(mappingObject(), null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "form_mapping.json";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $("copy").addEventListener("click", function (e) {
+    var btn = e.currentTarget;
+    var text = JSON.stringify(mappingObject(), null, 2);
+    function done(ok) {
+      btn.textContent = ok ? "คัดลอกแล้ว ✓" : "คัดลอกไม่ได้";
+      setTimeout(function () { btn.textContent = "คัดลอก JSON"; }, 1600);
+    }
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    else done(false);
+  });
+
+  $("reset").addEventListener("click", function () {
+    $("app").hidden = true;
+    $("drop").hidden = false;
+    $("loaderr").hidden = true;
+    window.scrollTo(0, 0);
+  });
+
+  /* ---------- loading ---------- */
+  function ingest(text, name) {
+    var data = JSON.parse(text.replace(/^﻿/, ""));
+    if (!data || !Array.isArray(data.fields)) {
+      throw new Error("ไม่ใช่ไฟล์จาก inspect_form_fields.py (ไม่มี fields)");
+    }
+    S.dump = data;
+    S.name = name || "";
+    S.manual = {};
+    var cached = load("mapper:manual:" + (data.form || S.name));
+    if (cached) {
+      try { S.manual = JSON.parse(cached) || {}; } catch (e) { S.manual = {}; }
+    }
+    // Default the row count to the highest row number the form itself shows.
+    var maxRow = 0;
+    data.fields.forEach(function (f) {
+      var n = lastNumber(f.name);
+      if (n && n > maxRow && n <= 60) maxRow = n;
+    });
+    var savedRows = load("mapper:rows");
+    S.rows = maxRow || (savedRows ? Number(savedRows) : 10) || 10;
+    $("rows").value = S.rows;
+    render();
+  }
+
+  function readFile(f) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        $("loaderr").hidden = true;
+        ingest(String(rd.result), f.name);
+      } catch (err) {
+        $("loaderr").textContent = "อ่านไฟล์ไม่ได้: " + err.message;
+        $("loaderr").hidden = false;
+      }
+    };
+    rd.onerror = function () {
+      $("loaderr").textContent = "อ่านไฟล์ไม่ได้";
+      $("loaderr").hidden = false;
+    };
+    rd.readAsText(f);
+  }
+
+  $("pick").addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function (e) { if (e.target.files[0]) readFile(e.target.files[0]); });
+
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+  $("theme").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : cur === "light" ? "dark"
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", next);
+    save("mapper:theme", next);
+  });
+
+  (function boot() {
+    var t = load("mapper:theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+  })();
+})();
+</script>
+</body>
+</html>
