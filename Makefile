@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests validate_pdf_sample
+.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests validate_pdf_sample test_report export_quotes
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -25,6 +25,14 @@ extended_tests:
 # full pass over the real PDF corpus is slow. See scripts/validate_pdf_extraction.py.
 validate_pdf_sample:
 	python scripts/validate_pdf_extraction.py --limit 20 --output pdf_validation_sample.json
+
+# Record the run into docs/test-reports/ and rebuild the index page there.
+test_report:
+	python scripts/record_test_run.py
+
+# Dump data/quotes.db for static/quote-review/.
+export_quotes:
+	python scripts/export_quote_records.py
 
 
 ######################
@@ -70,4 +78,6 @@ help:
 	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
 	@echo 'test_watch                   - run unit tests in watch mode'
 	@echo 'validate_pdf_sample          - run PDF extraction against a 20-file sample'
+	@echo 'test_report                  - run tests, record the result, rebuild the report index'
+	@echo 'export_quotes                - dump saved quote results for the review page'
 
