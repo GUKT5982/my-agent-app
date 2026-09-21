@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Validation Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f4f6f3;
+    --card: #fcfdfb;
+    --ink: #1b2320;
+    --muted: #56625c;
+    --faint: #7f8a84;
+    --rule: #dce2dd;
+    --track: #e5eae5;
+    --accent: #2d5b88;
+    --pass: #1d7a4b;
+    --skip: #8f5d00;
+    --fail: #b42318;
+    --note-bg: #e9ede9;
+    --sans: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #111513;
+      --card: #171c19;
+      --ink: #e3e8e4;
+      --muted: #9fa9a3;
+      --faint: #737e78;
+      --rule: #2a322e;
+      --track: #222925;
+      --accent: #8db3db;
+      --pass: #62cb92;
+      --skip: #e2ab4a;
+      --fail: #f2796c;
+      --note-bg: #1c221f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #111513;
+    --card: #171c19;
+    --ink: #e3e8e4;
+    --muted: #9fa9a3;
+    --faint: #737e78;
+    --rule: #2a322e;
+    --track: #222925;
+    --accent: #8db3db;
+    --pass: #62cb92;
+    --skip: #e2ab4a;
+    --fail: #f2796c;
+    --note-bg: #1c221f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    padding-block: 40px 72px;
+    padding-inline: 16px;
+  }
+  .page { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 44px; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--mono); }
+  button { font-family: inherit; font-size: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .eyebrow {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  h1 { font-size: 1.875rem; line-height: 1.35; font-weight: 600; }
+  h2 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+  .lead { color: var(--muted); max-width: 64ch; }
+  .caption { color: var(--faint); font-size: 0.8125rem; line-height: 1.6; }
+
+  header.head { display: flex; flex-direction: column; gap: 10px; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  .ghost {
+    background: none; border: 1px solid var(--rule); border-radius: 999px;
+    padding: 4px 14px; font-size: 0.8125rem; cursor: pointer; color: var(--muted);
+  }
+  .ghost:hover { border-color: var(--faint); color: var(--ink); }
+
+  /* ---------- loader ---------- */
+  .drop {
+    border: 1px dashed var(--rule); border-radius: 12px; background: var(--card);
+    padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start;
+  }
+  .drop.over { border-color: var(--accent); background: var(--note-bg); }
+  .drop h2 { font-size: 1rem; }
+  .drop pre {
+    margin: 0; background: var(--note-bg); border-radius: 8px; padding: 10px 14px;
+    font-family: var(--mono); font-size: 0.8125rem; color: var(--muted);
+    overflow-x: auto; max-width: 100%; white-space: pre; line-height: 1.8;
+  }
+  .btn {
+    background: var(--accent); color: var(--ground); border: 0; border-radius: 8px;
+    padding: 8px 18px; font-weight: 600; font-size: 0.875rem; cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .err { color: var(--fail); font-size: 0.8125rem; }
+
+  /* ---------- filter row ---------- */
+  .filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+    padding: 12px 14px; background: var(--card); border: 1px solid var(--rule); border-radius: 12px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px; min-height: 30px;
+    padding: 2px 13px; border-radius: 999px; border: 1px solid var(--rule);
+    background: none; cursor: pointer; font-size: 0.8125rem; color: var(--muted); white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--faint); color: var(--ink); }
+  .chip[aria-pressed="true"] { border-color: var(--faint); color: var(--ink); background: var(--note-bg); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--faint)); flex: none; }
+  .chip .n { font-family: var(--mono); font-size: 0.75rem; color: var(--faint); }
+  .filters .sep { width: 1px; align-self: stretch; background: var(--rule); margin-inline: 4px; }
+  .filters input[type="search"], .filters input[type="number"] {
+    font-family: inherit; font-size: 0.8125rem; color: var(--ink);
+    background: var(--ground); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 6px 10px; min-height: 30px;
+  }
+  .filters input[type="search"] { flex: 1 1 180px; min-width: 140px; }
+  .filters input[type="number"] { width: 72px; font-family: var(--mono); }
+  .filters label { font-size: 0.8125rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ---------- hero + tiles ---------- */
+  .hero { display: flex; flex-direction: column; gap: 4px; }
+  .hero .value { font-size: 3.25rem; line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+  .tile { background: var(--card); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+  .tile .label { font-size: 0.8125rem; color: var(--muted); }
+  .tile .value { font-size: 1.5rem; font-weight: 600; line-height: 1.3; }
+  .tile .sub { font-size: 0.75rem; color: var(--faint); font-family: var(--mono); }
+
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .sec-head { display: flex; flex-direction: column; gap: 2px; }
+
+  /* ---------- bar rows ---------- */
+  .rows { display: flex; flex-direction: column; gap: 4px; }
+  .row {
+    display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) auto;
+    align-items: center; gap: 6px 16px; width: 100%; min-height: 34px;
+    background: none; border: 0; border-radius: 8px; padding: 4px 8px;
+    text-align: left; cursor: pointer;
+  }
+  .row:hover, .row:focus-visible { background: var(--note-bg); outline: none; }
+  .row[aria-pressed="true"] { background: var(--note-bg); }
+  .row.wide { grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) auto; }
+  .row .name { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; min-width: 0; }
+  .row .name > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .ico { font-size: 0.75rem; color: var(--c, var(--faint)); width: 12px; flex: none; text-align: center; }
+  .track { height: 10px; border-radius: 5px; background: var(--track); }
+  .fill { height: 10px; border-radius: 0 4px 4px 0; background: var(--c, var(--accent)); min-width: 2px; }
+  .row .num { font-family: var(--mono); font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .row .num b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- histogram ---------- */
+  .hist { display: flex; align-items: flex-end; gap: 4px; height: 150px; padding-top: 22px; }
+  .hcol { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; background: none; border: 0; padding: 0; position: relative; }
+  .hcol .cap { position: absolute; top: -20px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .12s ease; }
+  .hcol:hover .cap, .hcol:focus-visible .cap, .hcol.peak .cap { opacity: 1; }
+  .hcol .bar { width: 100%; max-width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .hcol:hover .bar { filter: brightness(1.12); }
+  .hcol:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .haxis { display: flex; gap: 4px; border-top: 1px solid var(--rule); padding-top: 6px; }
+  .haxis span { flex: 1 1 0; text-align: center; font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); }
+
+  /* ---------- error taxonomy ---------- */
+  .taxo { display: flex; flex-direction: column; gap: 2px; }
+  .taxo summary { list-style: none; cursor: pointer; }
+  .taxo summary::-webkit-details-marker { display: none; }
+  .taxo summary:focus-visible { outline: none; }
+  .taxo summary:focus-visible .row { background: var(--note-bg); outline: 1px solid var(--accent); }
+  .taxo .files { margin: 2px 0 10px; padding: 8px 12px 8px 36px; background: var(--note-bg); border-radius: 8px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .taxo .files span { overflow-wrap: anywhere; }
+
+  /* ---------- table ---------- */
+  .tablewrap { border: 1px solid var(--rule); border-radius: 12px; overflow: auto; background: var(--card); max-height: 70vh; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.8125rem; }
+  th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--card); font-weight: 600; color: var(--muted); font-size: 0.75rem; z-index: 1; }
+  th button { background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; font-size: 0.75rem; color: inherit; }
+  th button:hover { color: var(--ink); }
+  td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+  td.file { max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
+  td.msg { max-width: 260px; overflow: hidden; text-overflow: ellipsis; color: var(--fail); font-family: var(--mono); font-size: 0.75rem; }
+  tbody tr:hover { background: var(--note-bg); }
+  .b-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; background: var(--c, var(--faint)); }
+  .tfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+  .tfoot .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .empty { color: var(--faint); font-size: 0.875rem; padding: 10px 0; }
+  .spacer { height: 24px; }
+
+  #tip {
+    position: fixed; pointer-events: none; z-index: 50; opacity: 0;
+    background: var(--ink); color: var(--ground); border-radius: 8px;
+    padding: 6px 10px; font-size: 0.75rem; line-height: 1.6; max-width: 280px;
+    transition: opacity .12s ease;
+  }
+  #tip b { font-family: var(--mono); font-weight: 500; }
+
+  @media (max-width: 620px) {
+    .row, .row.wide { grid-template-columns: minmax(0, 1fr) auto; }
+    .row .track { grid-column: 1 / -1; }
+    .hero .value { font-size: 2.5rem; }
+    .filters { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="head">
+    <div class="head-row">
+      <div>
+        <p class="eyebrow">my-agent-app · pdf extraction</p>
+        <h1>Validation Dashboard</h1>
+      </div>
+      <button class="ghost" id="theme">สลับธีม</button>
+    </div>
+    <p class="lead">อ่านผลจาก <code>scripts/validate_pdf_extraction.py</code> แล้วจัดเป็นรายการงานเรียงตามผลกระทบ — ไฟล์ไหนพัง ไฟล์ไหนดูเหมือนผ่านแต่ไม่ได้ข้อความ และ OCR กินเวลาตรงไหน</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <div>
+      <h2>เปิดไฟล์รายงาน</h2>
+      <p class="caption">ลากไฟล์ <code>.json</code> (หรือ <code>.csv</code> ที่ได้จาก <code>--csv</code>) มาวางตรงนี้ หรือกดเลือกไฟล์ — ข้อมูลไม่ถูกส่งออกไปไหน ประมวลผลในเบราว์เซอร์ล้วนๆ</p>
+    </div>
+    <pre># ชุดตัวอย่าง 20 ไฟล์
+python scripts/validate_pdf_extraction.py --limit 20 --output pdf_validation_sample.json
+
+# คอร์ปัสเต็ม (ช้า — ปล่อยรันทิ้งไว้)
+python scripts/validate_pdf_extraction.py --output docs/test-reports/full-corpus.json</pre>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="pick">เลือกไฟล์รายงาน</button>
+      <input type="file" id="file" accept=".json,.csv,application/json,text/csv" hidden>
+      <span class="caption" id="loaded"></span>
+    </div>
+    <p class="err" id="loaderr" hidden></p>
+  </div>
+
+  <div id="app" hidden>
+
+    <div class="filters" id="filters">
+      <button class="chip" data-bucket="all" aria-pressed="true">ทั้งหมด <span class="n" data-count="all">0</span></button>
+      <button class="chip" data-bucket="failed" aria-pressed="false"><span class="dot" style="--c:var(--fail)"></span>ล้มเหลว <span class="n" data-count="failed">0</span></button>
+      <button class="chip" data-bucket="suspect" aria-pressed="false"><span class="dot" style="--c:var(--skip)"></span>น่าสงสัย <span class="n" data-count="suspect">0</span></button>
+      <button class="chip" data-bucket="ocr" aria-pressed="false"><span class="dot" style="--c:var(--accent)"></span>ต้อง OCR <span class="n" data-count="ocr">0</span></button>
+      <button class="chip" data-bucket="clean" aria-pressed="false"><span class="dot" style="--c:var(--pass)"></span>สะอาด <span class="n" data-count="clean">0</span></button>
+      <span class="sep"></span>
+      <input type="search" id="q" placeholder="ค้นหาชื่อไฟล์ / ข้อความ error">
+      <label title="ไฟล์ที่ได้ข้อความน้อยกว่านี้ต่อหน้า ถือว่าน่าสงสัย">บางกว่า <input type="number" id="thin" min="0" step="10" value="50"> ตัวอักษร/หน้า</label>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="hero">
+      <p class="eyebrow">ไฟล์ที่ต้องตามต่อ</p>
+      <p class="value" id="heroValue">0</p>
+      <p class="caption" id="heroSub"></p>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="spacer"></div>
+
+    <section>
+      <div class="sec-head">
+        <h2>สุขภาพของคอร์ปัส</h2>
+        <p class="caption">กดที่แถบเพื่อกรองตารางด้านล่าง — <b>น่าสงสัย</b> คือกลุ่มที่อันตรายที่สุด เพราะ pipeline รายงานว่าสำเร็จแต่แทบไม่ได้ข้อความออกมา</p>
+      </div>
+      <div class="rows" id="health"></div>
+    </section>
+
+    <div class="spacer"></div>
+
+    <section>
+      <div class="sec-head">
+        <h2>สาเหตุที่ล้มเหลว</h2>
+        <p class="caption">จัดกลุ่ม error ที่ข้อความเหมือนกัน (ตัดชื่อไฟล์และตัวเลขออก) เรียงตามจำนวนไฟล์ที่โดน — ไล่แก้จากบนลงล่างคือเรียงตามผลกระทบแล้ว กดเพื่อดูรายชื่อไฟล์</p>
+      </div>
+      <div class="taxo" id="taxo"></div>
+    </section>
+
+    <div class="spacer"></div>
+
+    <section>
+      <div class="sec-head">
+        <h2>เวลาที่ใช้ต่อไฟล์</h2>
+        <p class="caption" id="timeCaption"></p>
+      </div>
+      <div class="hist" id="hist"></div>
+      <div class="haxis" id="haxis"></div>
+      <p class="caption">
+        ประมาณเวลารันคอร์ปัสเต็ม
+        <input type="number" id="corpus" min="1" step="1" value="1077" style="width:80px;font-family:var(--mono);font-size:0.8125rem;background:var(--ground);border:1px solid var(--rule);border-radius:6px;padding:2px 6px;color:var(--ink)">
+        ไฟล์ → <b id="eta">—</b> <span id="etaNote"></span>
+      </p>
+    </section>
+
+    <div class="spacer"></div>
+
+    <section>
+      <div class="sec-head">
+        <h2>รายไฟล์</h2>
+        <p class="caption" id="tableCaption"></p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="tfoot">
+        <button class="ghost" id="more" hidden>แสดงเพิ่ม 100 แถว</button>
+        <div class="acts">
+          <button class="ghost" id="copyPaths">คัดลอก path ที่กรองอยู่</button>
+          <button class="ghost" id="dlCsv">ดาวน์โหลด CSV</button>
+          <button class="ghost" id="reset">โหลดรายงานอื่น</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var PAGE = 100;
+  var BUCKETS = {
+    clean:   { label: "สะอาด",    icon: "●", color: "var(--pass)",   hint: "ดึงข้อความที่ฝังมาในไฟล์ได้ตรงๆ ไม่ต้อง OCR" },
+    ocr:     { label: "ต้อง OCR", icon: "◐", color: "var(--accent)", hint: "ได้ข้อความ แต่มีหน้าที่ต้องพึ่ง OCR — ช้าและมีโอกาสอ่านเพี้ยน" },
+    suspect: { label: "น่าสงสัย", icon: "▲", color: "var(--skip)",   hint: "ไม่มี error แต่ข้อความที่ได้น้อยผิดปกติ — พังแบบเงียบๆ" },
+    failed:  { label: "ล้มเหลว",  icon: "✕", color: "var(--fail)",   hint: "extract ไม่สำเร็จ มี error กลับมา" }
+  };
+  var ORDER = ["failed", "suspect", "ocr", "clean"];
+  var BINS = [
+    [0, 1, "<1s"], [1, 2, "1–2s"], [2, 5, "2–5s"], [5, 10, "5–10s"],
+    [10, 30, "10–30s"], [30, 60, "30–60s"], [60, 120, "1–2m"], [120, Infinity, ">2m"]
+  ];
+
+  var S = {
+    rows: [], name: "", thin: 50, bucket: "all", q: "", corpus: 1077,
+    sort: { key: "elapsed_seconds", dir: "desc" }, shown: PAGE
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+
+  /* ---------- storage: best-effort, never required ---------- */
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode / blocked */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  /* ---------- parsing ---------- */
+  function num(v) {
+    if (v === "" || v == null) return null;
+    var n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+
+  function normalize(list) {
+    if (!Array.isArray(list)) throw new Error("รูปแบบไฟล์ไม่ถูก — ต้องเป็น array ของผลต่อไฟล์");
+    return list.map(function (r) {
+      var err = r.error;
+      if (err === "" || err === "None" || err == null) err = null;
+      return {
+        path: String(r.path == null ? "" : r.path),
+        size_bytes: num(r.size_bytes),
+        page_count: num(r.page_count),
+        chars_extracted: num(r.chars_extracted),
+        ocr_page_count: num(r.ocr_page_count),
+        embedded_text_page_count: num(r.embedded_text_page_count),
+        pct_pages_ocr: num(r.pct_pages_ocr),
+        elapsed_seconds: num(r.elapsed_seconds) || 0,
+        error: err == null ? null : String(err)
+      };
+    });
+  }
+
+  function parseCsv(text) {
+    var rows = [], cur = [], val = "", inQuote = false, i, c;
+    for (i = 0; i < text.length; i++) {
+      c = text.charAt(i);
+      if (inQuote) {
+        if (c === '"' && text.charAt(i + 1) === '"') { val += '"'; i++; }
+        else if (c === '"') { inQuote = false; }
+        else { val += c; }
+      } else if (c === '"') { inQuote = true; }
+      else if (c === ",") { cur.push(val); val = ""; }
+      else if (c === "\n") { cur.push(val); rows.push(cur); cur = []; val = ""; }
+      else if (c !== "\r") { val += c; }
+    }
+    if (val !== "" || cur.length) { cur.push(val); rows.push(cur); }
+    if (!rows.length) return [];
+    var head = rows.shift();
+    return rows.filter(function (r) { return r.length > 1; }).map(function (r) {
+      var o = {};
+      head.forEach(function (h, j) { o[h.trim()] = r[j]; });
+      return o;
+    });
+  }
+
+  function ingest(text, name) {
+    var trimmed = text.replace(/^﻿/, "").trim();
+    var data;
+    if (trimmed.charAt(0) === "[" || trimmed.charAt(0) === "{") {
+      data = JSON.parse(trimmed);
+      if (!Array.isArray(data) && Array.isArray(data.files)) data = data.files;
+    } else {
+      data = parseCsv(trimmed);
+    }
+    var rows = normalize(data);
+    if (!rows.length) throw new Error("ไฟล์นี้ไม่มีข้อมูลสักแถว");
+    S.rows = rows;
+    S.name = name || "";
+    S.shown = PAGE;
+    save("pdfval:report", JSON.stringify(rows));
+    save("pdfval:name", S.name);
+    render();
+  }
+
+  /* ---------- derived ---------- */
+  function bucketOf(r) {
+    if (r.error) return "failed";
+    var pages = r.page_count || 0;
+    var chars = r.chars_extracted || 0;
+    if (!pages || !chars) return "suspect";
+    if (chars / pages < S.thin) return "suspect";
+    if ((r.ocr_page_count || 0) > 0) return "ocr";
+    return "clean";
+  }
+
+  function errSig(msg) {
+    return msg
+      .replace(/[A-Za-z]:\\[^\s'"]+/g, "<path>")
+      .replace(/\/[^\s'"]*\.pdf/gi, "<path>")
+      .replace(/'[^']*'/g, "'<x>'")
+      .replace(/\d+(\.\d+)?/g, "N")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 140);
+  }
+
+  function pct(n, d) { return d ? (100 * n / d) : 0; }
+  function fmtInt(n) { return (n == null) ? "—" : n.toLocaleString("en-US"); }
+  function fmtSec(s) {
+    if (s == null) return "—";
+    if (s < 60) return s.toFixed(1) + "s";
+    if (s < 3600) return Math.floor(s / 60) + "m " + Math.round(s % 60) + "s";
+    return Math.floor(s / 3600) + "h " + Math.round((s % 3600) / 60) + "m";
+  }
+  function base(p) { return p.split(/[\\/]/).pop() || p; }
+  function quantile(sorted, p) {
+    if (!sorted.length) return null;
+    return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+  }
+
+  function filtered() {
+    var q = S.q.toLowerCase();
+    return S.rows.filter(function (r) {
+      if (S.bucket !== "all" && r._b !== S.bucket) return false;
+      if (!q) return true;
+      return r.path.toLowerCase().indexOf(q) >= 0 || (r.error || "").toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  /* ---------- tooltip (enhances; every value is also in the table) ---------- */
+  var tip = $("tip");
+  function showTip(x, y, html) {
+    tip.innerHTML = html;
+    tip.style.opacity = "1";
+    var r = tip.getBoundingClientRect();
+    var left = Math.min(window.innerWidth - r.width - 12, Math.max(12, x + 14));
+    var top = y - r.height - 12;
+    if (top < 8) top = y + 20;
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+  function hideTip() { tip.style.opacity = "0"; }
+  document.addEventListener("scroll", hideTip, true);
+
+  function bindTip(node, html) {
+    node.addEventListener("mousemove", function (e) { showTip(e.clientX, e.clientY, html); });
+    node.addEventListener("mouseleave", hideTip);
+    node.addEventListener("focus", function () {
+      var b = node.getBoundingClientRect();
+      showTip(b.left + b.width / 2, b.top, html);
+    });
+    node.addEventListener("blur", hideTip);
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    $("drop").hidden = true;
+    $("app").hidden = false;
+    $("loaded").textContent = S.name ? "กำลังดู: " + S.name : "";
+
+    S.rows.forEach(function (r) { r._b = bucketOf(r); });
+
+    var total = S.rows.length;
+    var counts = { all: total, clean: 0, ocr: 0, suspect: 0, failed: 0 };
+    S.rows.forEach(function (r) { counts[r._b]++; });
+
+    Object.keys(counts).forEach(function (k) {
+      var n = document.querySelector('[data-count="' + k + '"]');
+      if (n) n.textContent = counts[k].toLocaleString("en-US");
+    });
+
+    var needWork = counts.failed + counts.suspect;
+    $("heroValue").textContent = needWork.toLocaleString("en-US");
+    $("heroSub").textContent = "จาก " + fmtInt(total) + " ไฟล์ (" + pct(needWork, total).toFixed(1) + "%) — " +
+      fmtInt(counts.failed) + " ไฟล์มี error, " + fmtInt(counts.suspect) + " ไฟล์ผ่านแบบแทบไม่ได้ข้อความ";
+
+    renderTiles(counts, total);
+    renderHealth(counts, total);
+    renderTaxo();
+    renderHist();
+    renderTable();
+  }
+
+  function renderTiles(counts, total) {
+    var times = S.rows.map(function (r) { return r.elapsed_seconds; }).sort(function (a, b) { return a - b; });
+    var sum = times.reduce(function (a, b) { return a + b; }, 0);
+    var ocrPages = 0, pages = 0, chars = 0;
+    S.rows.forEach(function (r) {
+      ocrPages += r.ocr_page_count || 0;
+      pages += r.page_count || 0;
+      chars += r.chars_extracted || 0;
+    });
+
+    var tiles = [
+      { label: "ไฟล์ที่ตรวจ", value: fmtInt(total), sub: fmtInt(pages) + " หน้า" },
+      { label: "ล้มเหลว", value: fmtInt(counts.failed), sub: pct(counts.failed, total).toFixed(1) + "% ของไฟล์" },
+      { label: "หน้าที่ต้อง OCR", value: fmtInt(ocrPages), sub: pct(ocrPages, pages).toFixed(1) + "% ของหน้า" },
+      { label: "เวลากลางต่อไฟล์", value: fmtSec(quantile(times, 0.5)), sub: "p95 " + fmtSec(quantile(times, 0.95)) },
+      { label: "เวลารันรวม", value: fmtSec(sum), sub: "ช้าสุด " + fmtSec(times[times.length - 1]) },
+      { label: "ตัวอักษรที่ได้", value: chars >= 1e6 ? (chars / 1e6).toFixed(1) + "M" : fmtInt(chars), sub: pages ? Math.round(chars / pages).toLocaleString("en-US") + " ตัว/หน้า" : "—" }
+    ];
+
+    var host = $("tiles");
+    host.innerHTML = "";
+    tiles.forEach(function (t) {
+      var c = el("div", "tile");
+      c.appendChild(el("p", "label", t.label));
+      c.appendChild(el("p", "value", t.value));
+      c.appendChild(el("p", "sub", t.sub));
+      host.appendChild(c);
+    });
+  }
+
+  function renderHealth(counts, total) {
+    var host = $("health");
+    host.innerHTML = "";
+    var max = Math.max.apply(null, ORDER.map(function (k) { return counts[k]; })) || 1;
+
+    ORDER.forEach(function (k) {
+      var meta = BUCKETS[k], n = counts[k];
+      var row = el("button", "row");
+      row.type = "button";
+      row.style.setProperty("--c", meta.color);
+      row.setAttribute("aria-pressed", String(S.bucket === k));
+      row.setAttribute("aria-label", meta.label + ": " + n + " ไฟล์ (" + pct(n, total).toFixed(1) + "%)");
+
+      var name = el("span", "name");
+      name.appendChild(el("span", "ico", meta.icon));
+      name.appendChild(el("span", null, meta.label));
+      row.appendChild(name);
+
+      var track = el("div", "track");
+      var fill = el("div", "fill");
+      fill.style.width = (100 * n / max) + "%";
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      var val = el("span", "num");
+      val.innerHTML = "<b>" + n.toLocaleString("en-US") + "</b> · " + pct(n, total).toFixed(1) + "%";
+      row.appendChild(val);
+
+      bindTip(row, "<b>" + meta.label + "</b> — " + meta.hint);
+      row.addEventListener("click", function () {
+        S.bucket = (S.bucket === k) ? "all" : k;
+        S.shown = PAGE;
+        syncChips();
+        render();
+      });
+      host.appendChild(row);
+    });
+  }
+
+  function renderTaxo() {
+    var host = $("taxo");
+    host.innerHTML = "";
+
+    var groups = {}, keys = [];
+    S.rows.forEach(function (r) {
+      if (!r.error) return;
+      var sig = errSig(r.error);
+      if (!groups[sig]) { groups[sig] = []; keys.push(sig); }
+      groups[sig].push(r);
+    });
+    keys.sort(function (a, b) { return groups[b].length - groups[a].length; });
+
+    if (!keys.length) {
+      host.appendChild(el("p", "empty", "ไม่มีไฟล์ไหนล้มเหลวในรายงานนี้"));
+      return;
+    }
+    var max = groups[keys[0]].length;
+
+    keys.forEach(function (sig) {
+      var files = groups[sig];
+      var d = document.createElement("details");
+      var sum = document.createElement("summary");
+
+      var row = el("div", "row wide");
+      row.style.setProperty("--c", "var(--fail)");
+
+      var name = el("span", "name");
+      name.appendChild(el("span", "ico", BUCKETS.failed.icon));
+      var label = el("span", "mono", sig);
+      label.title = sig;
+      name.appendChild(label);
+      row.appendChild(name);
+
+      var track = el("div", "track");
+      var fill = el("div", "fill");
+      fill.style.width = (100 * files.length / max) + "%";
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      var val = el("span", "num");
+      val.innerHTML = "<b>" + files.length.toLocaleString("en-US") + "</b> ไฟล์";
+      row.appendChild(val);
+
+      sum.appendChild(row);
+      d.appendChild(sum);
+
+      var list = el("div", "files");
+      files.slice(0, 12).forEach(function (r) { list.appendChild(el("span", null, r.path)); });
+      if (files.length > 12) {
+        list.appendChild(el("span", null, "…อีก " + (files.length - 12) + " ไฟล์ — ดูครบในตารางด้านล่าง"));
+      }
+      d.appendChild(list);
+      host.appendChild(d);
+    });
+  }
+
+  function renderHist() {
+    var counts = BINS.map(function () { return 0; });
+    S.rows.forEach(function (r) {
+      for (var i = 0; i < BINS.length; i++) {
+        if (r.elapsed_seconds >= BINS[i][0] && r.elapsed_seconds < BINS[i][1]) { counts[i]++; break; }
+      }
+    });
+    var max = Math.max.apply(null, counts) || 1;
+    var host = $("hist"), axis = $("haxis");
+    host.innerHTML = "";
+    axis.innerHTML = "";
+
+    counts.forEach(function (n, i) {
+      var col = el("div", "hcol" + (n === max ? " peak" : ""));
+      col.tabIndex = 0;
+      col.setAttribute("role", "img");
+      col.setAttribute("aria-label", BINS[i][2] + ": " + n + " ไฟล์");
+      col.appendChild(el("span", "cap", n ? n.toLocaleString("en-US") : ""));
+      var bar = el("div", "bar");
+      bar.style.height = Math.max(2, Math.round(100 * n / max)) + "%";
+      col.appendChild(bar);
+      bindTip(col, "<b>" + BINS[i][2] + "</b> · " + n.toLocaleString("en-US") + " ไฟล์ (" + pct(n, S.rows.length).toFixed(1) + "%)");
+      host.appendChild(col);
+      axis.appendChild(el("span", null, BINS[i][2]));
+    });
+
+    var times = S.rows.map(function (r) { return r.elapsed_seconds; }).sort(function (a, b) { return a - b; });
+    $("timeCaption").textContent = "กลาง " + fmtSec(quantile(times, 0.5)) +
+      " · p95 " + fmtSec(quantile(times, 0.95)) +
+      " · ช้าสุด " + fmtSec(times[times.length - 1]) + " — หางขวาคือไฟล์ที่ต้อง OCR ทั้งเล่ม";
+    updateEta();
+  }
+
+  function updateEta() {
+    var sum = S.rows.reduce(function (a, r) { return a + r.elapsed_seconds; }, 0);
+    var avg = S.rows.length ? sum / S.rows.length : 0;
+    $("eta").textContent = fmtSec(avg * S.corpus);
+    $("etaNote").textContent = "(เฉลี่ย " + fmtSec(avg) + "/ไฟล์ × " + fmtInt(S.corpus) + " ไฟล์ รันทีละไฟล์)";
+  }
+
+  var COLS = [
+    { key: "_b", label: "สถานะ", cell: function (r) {
+        var td = el("td");
+        var dot = el("span", "b-dot");
+        dot.style.setProperty("--c", BUCKETS[r._b].color);
+        td.appendChild(dot);
+        td.appendChild(document.createTextNode(BUCKETS[r._b].label));
+        return td;
+      } },
+    { key: "path", label: "ไฟล์", cell: function (r) {
+        var td = el("td", "file", base(r.path));
+        td.title = r.path;
+        return td;
+      } },
+    { key: "page_count", label: "หน้า", cell: function (r) { return el("td", "n", fmtInt(r.page_count)); } },
+    { key: "chars_extracted", label: "ตัวอักษร", cell: function (r) { return el("td", "n", fmtInt(r.chars_extracted)); } },
+    { key: "_cpp", label: "ตัว/หน้า", cell: function (r) {
+        var v = (r.page_count && r.chars_extracted != null) ? Math.round(r.chars_extracted / r.page_count) : null;
+        return el("td", "n", fmtInt(v));
+      } },
+    { key: "pct_pages_ocr", label: "%OCR", cell: function (r) {
+        return el("td", "n", r.pct_pages_ocr == null ? "—" : r.pct_pages_ocr.toFixed(0) + "%");
+      } },
+    { key: "elapsed_seconds", label: "เวลา", cell: function (r) { return el("td", "n", fmtSec(r.elapsed_seconds)); } },
+    { key: "error", label: "error", cell: function (r) {
+        var td = el("td", "msg", r.error || "");
+        td.title = r.error || "";
+        return td;
+      } }
+  ];
+
+  function sortVal(r, key) {
+    if (key === "_cpp") return (r.page_count && r.chars_extracted != null) ? r.chars_extracted / r.page_count : -1;
+    if (key === "_b") return ORDER.indexOf(r._b);
+    var v = r[key];
+    if (v == null) return (key === "path" || key === "error") ? "" : -1;
+    return v;
+  }
+
+  function renderTable() {
+    var rows = filtered().slice().sort(function (a, b) {
+      var x = sortVal(a, S.sort.key), y = sortVal(b, S.sort.key);
+      var c = (typeof x === "string" || typeof y === "string")
+        ? String(x).localeCompare(String(y))
+        : (x - y);
+      return S.sort.dir === "asc" ? c : -c;
+    });
+
+    var head = $("thead");
+    head.innerHTML = "";
+    COLS.forEach(function (c) {
+      var th = el("th");
+      var b = el("button", null, c.label + (S.sort.key === c.key ? (S.sort.dir === "asc" ? " ↑" : " ↓") : ""));
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (S.sort.key === c.key) S.sort.dir = (S.sort.dir === "asc") ? "desc" : "asc";
+        else { S.sort.key = c.key; S.sort.dir = (c.key === "path" || c.key === "error") ? "asc" : "desc"; }
+        renderTable();
+      });
+      th.appendChild(b);
+      head.appendChild(th);
+    });
+
+    var body = $("tbody");
+    body.innerHTML = "";
+    rows.slice(0, S.shown).forEach(function (r) {
+      var tr = document.createElement("tr");
+      COLS.forEach(function (c) { tr.appendChild(c.cell(r)); });
+      body.appendChild(tr);
+    });
+
+    if (!rows.length) {
+      var tr = document.createElement("tr");
+      var td = el("td", "empty", "ไม่มีไฟล์ที่ตรงกับตัวกรองนี้");
+      td.colSpan = COLS.length;
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+
+    $("more").hidden = rows.length <= S.shown;
+    $("tableCaption").textContent = "แสดง " + Math.min(S.shown, rows.length).toLocaleString("en-US") +
+      " จาก " + rows.length.toLocaleString("en-US") + " ไฟล์ที่ตรงตัวกรอง — คลิกหัวคอลัมน์เพื่อเรียง";
+  }
+
+  /* ---------- controls ---------- */
+  function syncChips() {
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (c) {
+      c.setAttribute("aria-pressed", String(c.getAttribute("data-bucket") === S.bucket));
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (c) {
+    c.addEventListener("click", function () {
+      S.bucket = c.getAttribute("data-bucket");
+      S.shown = PAGE;
+      syncChips();
+      render();
+    });
+  });
+
+  $("q").addEventListener("input", function (e) { S.q = e.target.value; S.shown = PAGE; renderTable(); });
+
+  $("thin").addEventListener("change", function (e) {
+    S.thin = Math.max(0, Number(e.target.value) || 0);
+    save("pdfval:thin", String(S.thin));
+    render();
+  });
+
+  $("corpus").addEventListener("input", function (e) {
+    S.corpus = Math.max(1, Number(e.target.value) || 1);
+    save("pdfval:corpus", String(S.corpus));
+    updateEta();
+  });
+
+  $("more").addEventListener("click", function () { S.shown += PAGE; renderTable(); });
+
+  $("copyPaths").addEventListener("click", function (e) {
+    var btn = e.currentTarget;
+    var text = filtered().map(function (r) { return r.path; }).join("\n");
+    function done(ok) {
+      btn.textContent = ok ? "คัดลอกแล้ว ✓" : "คัดลอกไม่ได้";
+      setTimeout(function () { btn.textContent = "คัดลอก path ที่กรองอยู่"; }, 1800);
+    }
+    if (navigator.clipboard && text) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else {
+      done(false);
+    }
+  });
+
+  $("dlCsv").addEventListener("click", function () {
+    var head = ["status", "path", "page_count", "chars_extracted", "chars_per_page", "pct_pages_ocr", "elapsed_seconds", "error"];
+    var lines = [head.join(",")];
+    filtered().forEach(function (r) {
+      var cpp = (r.page_count && r.chars_extracted != null) ? Math.round(r.chars_extracted / r.page_count) : "";
+      lines.push([
+        r._b, r.path,
+        r.page_count == null ? "" : r.page_count,
+        r.chars_extracted == null ? "" : r.chars_extracted,
+        cpp,
+        r.pct_pages_ocr == null ? "" : r.pct_pages_ocr.toFixed(1),
+        r.elapsed_seconds.toFixed(2),
+        r.error || ""
+      ].map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(","));
+    });
+    var blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "pdf-validation-filtered.csv";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $("reset").addEventListener("click", function () {
+    $("app").hidden = true;
+    $("drop").hidden = false;
+    $("loaderr").hidden = true;
+    window.scrollTo(0, 0);
+  });
+
+  /* ---------- file loading ---------- */
+  function readFile(f) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        $("loaderr").hidden = true;
+        ingest(String(rd.result), f.name);
+      } catch (err) {
+        $("loaderr").textContent = "อ่านไฟล์ไม่ได้: " + err.message;
+        $("loaderr").hidden = false;
+      }
+    };
+    rd.onerror = function () {
+      $("loaderr").textContent = "อ่านไฟล์ไม่ได้";
+      $("loaderr").hidden = false;
+    };
+    rd.readAsText(f);
+  }
+
+  $("pick").addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function (e) { if (e.target.files[0]) readFile(e.target.files[0]); });
+
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+  /* ---------- theme ---------- */
+  $("theme").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light"
+      : cur === "light" ? "dark"
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", next);
+    save("pdfval:theme", next);
+  });
+
+  /* ---------- boot ---------- */
+  (function boot() {
+    var t = load("pdfval:theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+
+    var thin = load("pdfval:thin");
+    if (thin != null) { S.thin = Number(thin) || 0; $("thin").value = S.thin; }
+
+    var corpus = load("pdfval:corpus");
+    if (corpus != null) { S.corpus = Number(corpus) || 1; $("corpus").value = S.corpus; }
+
+    var cached = load("pdfval:report");
+    if (cached) {
+      try {
+        S.rows = normalize(JSON.parse(cached));
+        S.name = load("pdfval:name") || "(รายงานล่าสุด)";
+        if (S.rows.length) render();
+      } catch (e) { /* stale or unreadable cache - fall through to the loader */ }
+    }
+  })();
+})();
+</script>
+</body>
+</html>
