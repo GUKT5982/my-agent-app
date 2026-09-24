@@ -3,7 +3,7 @@ title: PDF Extraction & Quote-to-Form — Progress
 project: my-agent-app
 status: in-progress
 created: 2026-09-11
-updated: 2026-09-21
+updated: 2026-09-24
 tags:
   - project/pdf-extractor
   - langgraph
@@ -13,7 +13,7 @@ tags:
 # ความคืบหน้าโปรเจกต์
 
 > [!info] อัปเดตล่าสุด
-> 2026-09-21 — ดูรายละเอียดการติดตั้ง/setup ทั้งหมดที่ [SETUP.txt](SETUP.txt)
+> 2026-09-24 — ดูรายละเอียดการติดตั้ง/setup ทั้งหมดที่ [SETUP.txt](SETUP.txt)
 
 ---
 
@@ -53,6 +53,14 @@ tags:
 > - ฟอร์มทดสอบ 41 ช่องที่ชื่อ `qty1` / `Description 1` / `NET TOTAL`: จับได้เอง 1 ช่อง → หลังจับคู่ 39 ช่อง → กรอกจริงได้ 19 ฟิลด์ (เท่าจำนวนข้อมูลที่ใบเสนอราคามี) ช่องลงชื่อไม่ถูกแตะ
 > - เทสต์ใหม่ 8 ตัวใน `tests/unit_tests/test_form_filling.py` รวมทั้งชุด **40 ผ่าน / 3 skip**
 
+> [!success] CI / เครื่อง KCG / บั๊กฟอร์มเปล่า (2026-09-24)
+> ทำบน branch `fix/ci-uv-sync-and-blank-form` → [PR #2](https://github.com/GUKT5982/my-agent-app/pull/2) — **CI บน GitHub ผ่านแล้วทั้งสอง workflow** (unit test 3.11/3.12 ผ่าน, integration test สั่งรันมือบน branch แล้วผ่าน) แต่ integration บน GitHub **skip ครบทั้ง 4 ตัว** (ไม่มี Ollama / คอร์ปัส / Tesseract) คือเลิกพังแล้ว แต่ยังไม่ได้ทดสอบอะไรจริง
+> - **CI บน GitHub พังมาตลอดตั้งแต่งาน PDF เข้ามา**: ทั้ง 2 workflow ไม่ได้ลง `pymupdf` (mypy หา module ไม่เจอ ส่วน integration test ล้มตอน import `agent` ทุกคืน) + workflow unit test ฟัง push ที่ `main` ซึ่ง repo นี้ไม่มี เลยไม่เคยรันบน master + codespell จะมาติดคำว่า `LiveCycle` (ชื่อผลิตภัณฑ์ Adobe) — แก้ครบแล้ว
+> - จำลอง CI ด้วย Python 3.12 ในเครื่อง: mypy สะอาด, unit 41 ผ่าน, integration 1 ผ่าน / 3 skip
+> - **`uv sync` ใช้ได้แล้ว** — สาเหตุจริงคือ `.venv` เป็น Python 3.14 แต่ `jsonschema-rs 0.29.1` ใน lock มี wheel ถึงแค่ cp313 → uv ต้องคอมไพล์ Rust เอง อัปเป็น `0.44.1` (ตัวใหม่สุดที่ `langgraph-api` ยอม คือ `<0.45`) มี wheel `abi3` ลงได้เลย — lock เก่ายังขาด `langchain-ollama` กับ extra `pdf` ทั้งหมดด้วย
+> - **`langgraph dev` รันได้แล้วบนเครื่อง KCG ที่ port 2024** — ต้องมี `PYTHONUTF8=1` และเรียกผ่าน `python -m langgraph_cli` (ดู SETUP.txt ข้อ 4)
+> - **แก้บั๊ก: แกะข้อมูลไม่สำเร็จแต่ยังได้ "ฟอร์มที่กรอกแล้ว" เปล่าๆ กลับมา** โดย `fill_warnings` ว่าง ไม่มีอะไรบอกว่าไม่มีข้อมูล และ `save_record` เขียนฟอร์มเปล่าลงดิสก์ ตอนนี้ไม่คืนฟอร์มและบอกเหตุผลใน `fill_warnings` — ยืนยันผ่าน API จริงแล้ว + เทสต์ใหม่ 2 ตัว รวม **42 ผ่าน / 3 skip**
+
 > [!success] Git / Pull Request
 > - งานทั้งหมดทำบน branch `feature/pdf-extraction-and-quote-to-form` (ไม่แตะ `master` โดยตรง)
 > - 2026-09-21: **[PR #1](https://github.com/GUKT5982/my-agent-app/pull/1) merge เข้า `master` แล้ว** ด้วย merge commit `dfca519` — commit ทั้ง 14 ตัวยังอยู่ครบพร้อมวันที่เดิม branch เดิมยังไม่ได้ลบ
@@ -75,11 +83,15 @@ tags:
 > - [ ] **ทดสอบกับข้อมูลจริง** — ตอนนี้ทดสอบด้วยไฟล์ demo ที่สร้างขึ้นเอง (`demo_quote.pdf`, `demo_form.pdf`)
 >   - [ ] ฟอร์ม PDF จริงที่จะใช้งานจริง (ต้องรู้ชื่อฟิลด์ AcroForm จริง เพื่อปรับ mapping)
 >   - [ ] ใบเสนอราคาจริงจากผู้ขายจริง (โครงสร้าง/ภาษาอาจต่างจาก demo — Gemma extraction เป็น general-purpose แต่ควรทดสอบยืนยัน)
-> - [ ] **รัน validate กับไฟล์ทั้งหมดใน `test_pdfs`** (1,077 ไฟล์, ~868MB) — ตอนนี้สุ่มทดสอบแค่บางไฟล์ ยังไม่ได้รันชุดเต็มด้วย `scripts/validate_pdf_extraction.py` (คาดว่าใช้เวลานาน เพราะ OCR ช้า)
+> - [ ] **เลือก LLM ตัวใหม่แทน Ollama** — 2026-09-24 ผู้ใช้แจ้งว่า **ใช้ Ollama ไม่ได้** แต่ `extract_quote_fields` และ graph `agent` ผูกกับ `ChatOllama` อยู่ ขั้นแกะข้อมูลจึงรันไม่ได้จนกว่าจะเลือกตัวแทน (ส่วนถอดข้อความ PDF และกรอกฟอร์มไม่เกี่ยว ใช้ได้ปกติ)
+>   - ข้อมูลประกอบ: บนเครื่อง KCG cloud model ของ Ollama ต่อ ollama.com ไม่ได้อยู่แล้ว (`tls: handshake failure` น่าจะเป็น proxy ของบริษัท)
+> - [ ] **รัน validate กับไฟล์ทั้งหมดใน `test_pdfs`** (1,077 ไฟล์, ~868MB) — **คอร์ปัสไม่อยู่บนเครื่อง KCG** (อยู่เครื่อง Amaya) ต้องย้ายไฟล์มาไว้ที่ `Desktop\test_pdfs` ก่อน — ตอนนี้สุ่มทดสอบแค่บางไฟล์ ยังไม่ได้รันชุดเต็มด้วย `scripts/validate_pdf_extraction.py` (คาดว่าใช้เวลานาน เพราะ OCR ช้า)
 >   - ผลที่ได้เอาไปเปิดใน `static/validation-dashboard/` ได้เลย จะบอกเองว่าควรไล่แก้อะไรก่อน และประมาณเวลาที่เหลือให้
 > - [x] ~~Review และ merge PR #1~~ — merge แล้ว 2026-09-21
 
 > [!warning] ปัญหา environment: port 2024 ใช้ไม่ได้ถาวร
+> 2026-09-24 (เครื่อง KCG): ใช้ 2024 ได้ปกติ (เช็ค `LISTENING` ก่อนแล้วว่าง) อาการ "server ติดแต่เรียกไม่ได้" อีกแบบที่เจอวันนี้คือ worker ล้มด้วย `UnicodeDecodeError` (cp874) แต่ process แม่ยังค้างอยู่ แก้ด้วย `PYTHONUTF8=1`
+>
 > เจอ ghost process ค้างใน TCP table ของเครื่องที่ฆ่าไม่ตาย ตอนนี้ใช้ port 2777 แทนชั่วคราว (`langgraph dev --port 2777`)
 > - [ ] ลอง restart เครื่อง (Windows) ดูว่า TCP table เคลียร์หรือไม่
 > - [ ] ถ้ายังไม่หาย ให้ใช้ port อื่นที่ไม่เคยใช้มาก่อนทุกครั้งที่ restart server (อย่าใช้ port ซ้ำ)
@@ -89,7 +101,7 @@ tags:
 > - ถ้ามีเกิน ให้ฆ่าทั้ง tree จาก process แม่ (`taskkill /PID <pid> /T /F`) ฆ่าแค่ตัวลูกไม่พอ
 > - `langgraph dev` บนเครื่องนี้ไม่ reload เองเมื่อแก้ไฟล์ใน `src/` ต้อง restart ทุกครั้งหลังแก้โค้ด
 
-> [!warning] `uv sync` ใช้ไม่ได้บนเครื่อง KCG
+> [!success] ~~`uv sync` ใช้ไม่ได้บนเครื่อง KCG~~ — แก้แล้ว 2026-09-24 (อัป `jsonschema-rs` ใน lock) ใช้ `uv sync --extra pdf` ได้เลย ข้างล่างเก็บไว้เป็นประวัติ
 > 2026-09-21: `uv sync` ล้มตอนสร้าง `jsonschema-rs` (dev dependency ที่มาจาก `langgraph-cli[inmem]`) เพราะต้องคอมไพล์ Rust แล้ว linker บนเครื่องนี้ error
 > - ทางออกชั่วคราว: ลงเฉพาะที่ต้องใช้แบบไม่ผ่าน lock
 >   ```powershell
@@ -97,9 +109,10 @@ tags:
 >   uv pip install --python .venv\Scripts\python.exe -e . --no-deps
 >   ```
 > - หลังทำแล้ว `make test` / `make lint` ใช้ได้ แต่ `langgraph dev` ยังต้องใช้ `langgraph-cli` ซึ่งยังลงไม่ได้บนเครื่องนี้
-> - [ ] หาทางแก้ถาวร (ลง Visual Studio Build Tools ให้ครบ หรือหา wheel สำเร็จรูปของ `jsonschema-rs`)
+> - [x] หาทางแก้ถาวร — ได้ wheel สำเร็จรูปจากการอัปเวอร์ชันใน lock ไม่ต้องลง Build Tools
 
 > [!note] ปรับปรุงเพิ่มเติม (ไม่เร่งด่วน)
+> - [ ] `langgraph-api 0.10.0` ขึ้นเตือนว่า End of Life (ล่าสุด 0.14.x) — ถ้าอัปต้องเช็คว่า `jsonschema-rs` ที่มันต้องการยังมี wheel ให้ Python 3.14 บน Windows
 > - [x] ชื่อฟิลด์ที่ต่างกันแค่รูปแบบ match ได้แล้ว (`Vendor Name` / `VENDOR-NAME` / `form1[0].page1[0].vendor_name[0]`) และฟิลด์ที่โผล่หลายที่ถูกกรอกครบทุกจุด
 >   - [x] รองรับ convention ที่ต่างกันจริงๆ แล้ว (เช่น `qty1`, `Description 1`) ผ่านไฟล์ mapping จาก `static/field-mapper/` — แต่ยังทดสอบกับฟอร์มที่สร้างขึ้นจำลองเท่านั้น ยังไม่เคยเจอฟอร์มจริง
 > - [x] Retry เมื่อ Gemma ตอบ JSON ผิดรูปแบบ (สูงสุด 3 ครั้ง ส่ง error กลับให้โมเดลเห็น เพราะ temperature=0 ส่ง prompt เดิมจะได้คำตอบเดิม) — ไม่ retry ถ้าเรียกโมเดลไม่ได้เลย และแก้ crash กรณีตอบ JSON ที่ไม่ใช่ object
@@ -110,9 +123,12 @@ tags:
 ## คำสั่งอ้างอิงเร็วๆ
 
 ```powershell
-# รัน server (ใช้ port 2777 เพราะ 2024 มีปัญหา)
-cd C:\Users\Amaya\Desktop\agent\my-agent-app
-langgraph dev --no-browser --port 2777
+# รัน server บนเครื่อง KCG (ดู SETUP.txt ข้อ 4 ว่าทำไมต้องแบบนี้)
+$env:PYTHONUTF8 = "1"
+.venv\Scripts\python.exe -m langgraph_cli dev --no-browser --port 2024
+
+# ติดตั้ง dependency ทั้งหมดตาม lock
+uv sync --extra pdf
 
 # รัน unit tests
 python -m pytest tests/unit_tests/ -v
