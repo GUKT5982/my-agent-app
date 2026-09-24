@@ -71,6 +71,19 @@ langgraph dev
 ถ้าสำเร็จจะเปิด LangGraph Studio ให้ทดสอบ graph ผ่านเบราว์เซอร์
 (server รันที่ http://localhost:2024 โดย default)
 
+บนเครื่อง KCG (Windows ภาษาไทย + นโยบายบล็อกไฟล์ .exe) ให้ใช้แบบนี้แทน:
+
+   $env:PYTHONUTF8 = "1"
+   .venv\Scripts\python.exe -m langgraph_cli dev --no-browser --port 2024
+
+- ต้องมี PYTHONUTF8=1 เพราะ langgraph-api เปิดไฟล์ openapi.json โดยไม่
+  ระบุ encoding บน Windows ภาษาไทย Python จะอ่านเป็น cp874 แล้ว server
+  ล้มตอนเริ่ม ("UnicodeDecodeError: 'charmap' codec can't decode byte 0x86")
+  โดย process แม่ยังค้างอยู่ ดูเหมือน server ติดแต่เรียกไม่ได้
+- ต้องเรียกผ่าน "python -m langgraph_cli" เพราะเครื่องนี้บล็อก launcher
+  .exe ที่ pip สร้าง (langgraph.exe, pytest.exe ขึ้น "Access is denied")
+  python.exe ของ .venv เดิมยังรันได้ แต่ venv ที่สร้างใหม่ก็โดนบล็อกเหมือนกัน
+
 ---------------------------------------------------------------------
 5) แก้ปัญหาที่เจอบ่อย
 ---------------------------------------------------------------------
