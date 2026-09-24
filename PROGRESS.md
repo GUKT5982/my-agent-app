@@ -54,7 +54,7 @@ tags:
 > - เทสต์ใหม่ 8 ตัวใน `tests/unit_tests/test_form_filling.py` รวมทั้งชุด **40 ผ่าน / 3 skip**
 
 > [!success] CI / เครื่อง KCG / บั๊กฟอร์มเปล่า (2026-09-24)
-> ทำบน branch `fix/ci-uv-sync-and-blank-form` (3 commit) — **ยังไม่ได้ push** เลยยังไม่เห็นผล CI จริงบน GitHub
+> ทำบน branch `fix/ci-uv-sync-and-blank-form` → [PR #2](https://github.com/GUKT5982/my-agent-app/pull/2) — **CI บน GitHub ผ่านแล้วทั้งสอง workflow** (unit test 3.11/3.12 ผ่าน, integration test สั่งรันมือบน branch แล้วผ่าน) แต่ integration บน GitHub **skip ครบทั้ง 4 ตัว** (ไม่มี Ollama / คอร์ปัส / Tesseract) คือเลิกพังแล้ว แต่ยังไม่ได้ทดสอบอะไรจริง
 > - **CI บน GitHub พังมาตลอดตั้งแต่งาน PDF เข้ามา**: ทั้ง 2 workflow ไม่ได้ลง `pymupdf` (mypy หา module ไม่เจอ ส่วน integration test ล้มตอน import `agent` ทุกคืน) + workflow unit test ฟัง push ที่ `main` ซึ่ง repo นี้ไม่มี เลยไม่เคยรันบน master + codespell จะมาติดคำว่า `LiveCycle` (ชื่อผลิตภัณฑ์ Adobe) — แก้ครบแล้ว
 > - จำลอง CI ด้วย Python 3.12 ในเครื่อง: mypy สะอาด, unit 41 ผ่าน, integration 1 ผ่าน / 3 skip
 > - **`uv sync` ใช้ได้แล้ว** — สาเหตุจริงคือ `.venv` เป็น Python 3.14 แต่ `jsonschema-rs 0.29.1` ใน lock มี wheel ถึงแค่ cp313 → uv ต้องคอมไพล์ Rust เอง อัปเป็น `0.44.1` (ตัวใหม่สุดที่ `langgraph-api` ยอม คือ `<0.45`) มี wheel `abi3` ลงได้เลย — lock เก่ายังขาด `langchain-ollama` กับ extra `pdf` ทั้งหมดด้วย
