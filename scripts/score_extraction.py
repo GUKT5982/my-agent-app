@@ -34,18 +34,39 @@ ITEM_COLUMNS = {
 }
 
 
+# Cosmetic character differences that reach here but mean nothing for
+# comparison. Some PDF text layers report a drawn hyphen as U+00AD (soft
+# hyphen) or U+2010/2011, and whether the model passes that through or
+# rewrites it as "-" varies between runs - so without folding them the same
+# quotation keys two different ways and silently drops out of the score.
+_HYPHEN_LIKE = (0x00AD, 0x2010, 0x2011, 0x2012, 0x2013, 0x2014)
+_ZERO_WIDTH = (0x200B, 0x200C, 0x200D, 0xFEFF)
+_COSMETIC: dict[int, str | None] = dict.fromkeys(_HYPHEN_LIKE, "-")
+_COSMETIC.update(dict.fromkeys(_ZERO_WIDTH))
+
+
 def normalize(value: str) -> str:
     """Compare values the way a person reading them would.
 
-    Whitespace and letter case never carry meaning here, and "1,200.00" and
-    "1200" are the same amount written two ways, so numbers are compared as
-    numbers. Everything else is compared as text.
+    Whitespace, invisible formatting characters and letter case never carry
+    meaning here, and "1,200.00" and "1200" are the same amount written two
+    ways, so numbers are compared as numbers. Everything else is compared as
+    text.
     """
-    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = re.sub(r"\s+", " ", str(value or "").translate(_COSMETIC)).strip()
     plain = text.replace(",", "")
     if re.fullmatch(r"-?\d+(\.\d+)?", plain):
         return str(float(plain))
     return text.casefold()
+
+
+def normalize_key(value: str) -> str:
+    """Match a quotation between runs despite cosmetic spelling differences.
+
+    Same cleanup as `normalize` minus the numeric conversion, which would
+    turn an all-digit quote number into "8821.0" in reports.
+    """
+    return re.sub(r"\s+", " ", str(value or "").translate(_COSMETIC)).strip().casefold()
 
 
 def value_of(record: dict[str, Any], field: str) -> str:
@@ -67,7 +88,7 @@ def score(golden: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, An
     """Compare every golden field against the matching record in this run."""
     by_key: dict[str, dict[str, Any]] = {}
     for record in records:
-        by_key[key_of(record)] = record
+        by_key[normalize_key(key_of(record))] = record
 
     per_field: dict[str, dict[str, int]] = {}
     mismatches: list[dict[str, str]] = []
@@ -75,7 +96,7 @@ def score(golden: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, An
     unusable: list[str] = []
 
     for key, entry in golden.items():
-        record = by_key.get(key)
+        record = by_key.get(normalize_key(key))
         if record is None:
             missing_records.append(key)
             continue

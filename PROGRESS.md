@@ -3,7 +3,7 @@ title: PDF Extraction & Quote-to-Form — Progress
 project: my-agent-app
 status: in-progress
 created: 2026-09-11
-updated: 2026-09-21
+updated: 2026-09-28
 tags:
   - project/pdf-extractor
   - langgraph
@@ -13,7 +13,7 @@ tags:
 # ความคืบหน้าโปรเจกต์
 
 > [!info] อัปเดตล่าสุด
-> 2026-09-21 — ดูรายละเอียดการติดตั้ง/setup ทั้งหมดที่ [SETUP.txt](SETUP.txt)
+> 2026-09-28 — ดูรายละเอียดการติดตั้ง/setup ทั้งหมดที่ [SETUP.txt](SETUP.txt)
 
 ---
 
@@ -53,6 +53,27 @@ tags:
 > - ฟอร์มทดสอบ 41 ช่องที่ชื่อ `qty1` / `Description 1` / `NET TOTAL`: จับได้เอง 1 ช่อง → หลังจับคู่ 39 ช่อง → กรอกจริงได้ 19 ฟิลด์ (เท่าจำนวนข้อมูลที่ใบเสนอราคามี) ช่องลงชื่อไม่ถูกแตะ
 > - เทสต์ใหม่ 8 ตัวใน `tests/unit_tests/test_form_filling.py` รวมทั้งชุด **40 ผ่าน / 3 skip**
 
+> [!success] 2026-09-28 — Ollama ใช้ได้แล้ว รันเทสต์ที่เคยติดได้ครบ + เจอบั๊กใหญ่ 1 ตัว
+> Gemma cloud (`gemma4:31b-cloud`) เรียกได้แล้ว network ไม่บล็อกอีก เทสต์ที่เคย skip รันจริงผ่านหมด
+> - **pytest 45 ผ่าน / 0 skip / 0 fail** (เดิม 40 ผ่าน 3 skip) + **Playwright 13 ผ่าน** (API 8 + UI 5 บน Chromium จริง) — `ruff` + `mypy --strict` สะอาด
+> - chat agent (`agent` graph) ตอบจริงแล้ว ไม่ใช่ `__error__` อีก — เทสต์ที่เขียนเผื่อไว้สองทางตอนนี้เข้าทางที่ถูก
+> - quote-to-form ผ่าน HTTP `/runs/wait` จริง: 2.7 วิ, 19/19 ฟิลด์, `fill_warnings` ว่าง, บันทึกลง `data/quotes.db` + เขียนไฟล์ฟอร์มลงดิสก์ครบ
+> - ทดสอบ generalization ด้วยใบเสนอราคาที่หน้าตาต่างจาก demo: **ภาษาอังกฤษ label คนละแบบ (Invoice No / Bill To / Total Due), วันที่ MM/DD/YYYY, ไม่มี VAT → ถูกทุกฟิลด์** และไม่เดาข้อมูลที่ไม่มีในเอกสาร (ปล่อยว่างถูกต้อง)
+
+> [!warning] บั๊กที่เจอและแก้แล้ว (2026-09-28): heuristic นับช่องว่างเป็นตัวหาร ทำให้ทิ้ง text layer ที่ดีไปใช้ OCR
+> `_page_has_usable_text` หาร `alnum / len(stripped)` ซึ่ง **ตัวหารรวมช่องว่าง** เอกสารที่จัดคอลัมน์ด้วยช่องว่าง (ใบเสนอราคา/ตาราง/ฟอร์มราชการ แทบทุกใบ) จะมีช่องว่างเกินครึ่งหน้า อัตราเลยตกใต้ 0.5 → ถูกส่งไป OCR ทั้งที่ข้อความฝังสมบูรณ์ **และไม่มี warning เลย**
+> - วัดกับคอร์ปัสจริงทั้ง 1,077 ไฟล์ (13,584 หน้า): **230 หน้าใน 63 ไฟล์โดนผลกระทบ** คิดเป็น 59% ของหน้าที่ระบบตัดสินใจ OCR ทั้งที่มีข้อความอยู่
+> - ตัวอย่างความเสียหายจริง (`P6HR4OCK...pdf` ใบตอบประมูลรัฐ Alabama ทั้ง 5 หน้า): หน้า 1 จาก **3,897 ตัวอักษรเหลือ 1,417 — หายไป 64%** และ OCR อ่านเลขผิด (`22197` → `2219757`)
+> - เอกสารไทยเสียหายหนักกว่า เพราะ OCR ใช้ `lang="eng"` ทับข้อความไทย ได้อักษรละตินที่อ่านไม่ออกแต่ดู "เหมือนจะถูก" (`ห้างหุ้นส่วนจำกัด ไทยเจริญวัสดุ` → `Weyuaruariia lnaatyian`) แล้วส่งต่อให้ Gemma แกะ
+> - แก้โดยไม่นับช่องว่างในตัวหาร (ช่องว่างคือ layout ไม่ใช่เนื้อหา) **ผลหลังแก้: 230 หน้าใช้ text layer ถูกต้อง, 0 regression, กู้ข้อความจริงกลับมา 1,015,022 ตัวอักษร, ลดภาระ OCR 12%**
+> - เพิ่มเทสต์กันถอยหลัง 2 ตัว: ตารางที่ padding ด้วยช่องว่างต้องใช้ text layer / text layer ที่เป็นสัญลักษณ์ขยะต้องยัง fallback ไป OCR
+> - หมายเหตุ: ไฟล์ demo รอดบั๊กนี้มาตลอดเพราะวิธีสร้างไฟล์ (แยก `insert_text` ต่อ cell → ช่องว่างแค่ 11%) ต้องมีเอกสารจริงเท่านั้นจึงเจอ
+
+> [!warning] บั๊กที่เจอและแก้แล้ว (2026-09-28): scoreboard match ใบเสนอราคาไม่เจอแบบเงียบๆ
+> `score_extraction.py` จับคู่ใบเสนอราคาด้วย `quote_no` ดิบ แต่ PDF บางไฟล์รายงาน hyphen ที่วาดจริงเป็น U+00AD (soft hyphen มองไม่เห็น) และ Gemma บางรอบแปลงเป็น `-` บางรอบปล่อยผ่าน
+> - ผลคือ **ใบเดียวกันคนละรอบได้ key ต่างกัน → หลุดไปอยู่ `missing_records` ไม่ถูกคิดคะแนน** โดยไม่มีอะไรเตือน ซึ่งขัดกับเหตุผลที่สร้างสคริปต์นี้มา
+> - แก้โดยรวบ hyphen/dash ทุกแบบ (U+00AD, U+2010-2014) เป็น `-` และลบ zero-width ก่อนเทียบ ทั้งฝั่ง golden และฝั่ง record — ยืนยันแล้วว่าใบที่เคยหลุดกลับมาคิดคะแนนได้ 100%
+
 > [!success] Git / Pull Request
 > - Commit ทั้งหมดอยู่ใน branch `feature/pdf-extraction-and-quote-to-form` (ไม่แตะ `master` โดยตรง)
 > - Push ขึ้น GitHub แล้ว และเปิด PR ไว้ให้: **[PR #1](https://github.com/GUKT5982/my-agent-app/pull/1)**
@@ -63,22 +84,29 @@ tags:
 ## 📝 เหลือทำต่อ
 
 > [!todo] งานหลักที่ยังไม่เสร็จ
-> - [ ] **ทดสอบกับข้อมูลจริง** — ตอนนี้ทดสอบด้วยไฟล์ demo ที่สร้างขึ้นเอง (`demo_quote.pdf`, `demo_form.pdf`)
+> - [ ] **ทดสอบกับข้อมูลจริง** — ยังต้องใช้ไฟล์ของจริงจากงานจริง
 >   - [ ] ฟอร์ม PDF จริงที่จะใช้งานจริง (ต้องรู้ชื่อฟิลด์ AcroForm จริง เพื่อปรับ mapping)
->   - [ ] ใบเสนอราคาจริงจากผู้ขายจริง (โครงสร้าง/ภาษาอาจต่างจาก demo — Gemma extraction เป็น general-purpose แต่ควรทดสอบยืนยัน)
-> - [ ] **รัน validate กับไฟล์ทั้งหมดใน `test_pdfs`** (1,077 ไฟล์, ~868MB) — ตอนนี้สุ่มทดสอบแค่บางไฟล์ ยังไม่ได้รันชุดเต็มด้วย `scripts/validate_pdf_extraction.py` (คาดว่าใช้เวลานาน เพราะ OCR ช้า)
+>   - [ ] ใบเสนอราคาจริงจากผู้ขายจริง — 2026-09-28 ทดสอบ generalization ด้วยใบที่หน้าตาต่างจาก demo แล้ว (label คนละแบบ, วันที่คนละ format, ไม่มี VAT, มีบรรทัดส่วนลดที่ schema ไม่มีช่อง, qty มีหน่วยติดมา) ผลดี แต่ยังเป็นไฟล์ที่เราสร้างเองอยู่
+> - [ ] **รัน validate เต็มคอร์ปัส `test_pdfs` แบบมี OCR** (1,077 ไฟล์, ~868MB) ด้วย `scripts/validate_pdf_extraction.py` — ยังไม่ได้รัน เพราะ OCR ช้า
+>   - 2026-09-28: วิเคราะห์ชั้น text layer ของทั้ง 1,077 ไฟล์ (13,584 หน้า) ไปแล้วแบบไม่ต้อง OCR — ใช้หาบั๊ก heuristic ข้างบนได้ ถ้าจะทำซ้ำ ดูสคริปต์วัดใน commit นี้
 >   - ผลที่ได้เอาไปเปิดใน `static/validation-dashboard/` ได้เลย จะบอกเองว่าควรไล่แก้อะไรก่อน และประมาณเวลาที่เหลือให้
 > - [ ] **Review และ merge PR #1**
+> - [ ] พิจารณาเตือนเมื่อ OCR ทับหน้าที่มี text layer เยอะ แล้วได้ข้อความสั้นกว่าเดิมมาก — ตอนนี้ถ้า OCR ผิดภาษา จะได้ข้อความขยะที่ดู "เหมือนจะถูก" โดยไม่มีสัญญาณอะไรเลย (บั๊ก heuristic แก้ต้นเหตุหลักไปแล้ว แต่ safety net นี้ยังไม่มี)
+> - [ ] พิจารณาให้ context ตั้ง `lang` ของ OCR ตามภาษาเอกสารได้ง่ายขึ้น / ใช้ `tha+eng` เป็นค่าเริ่มต้นสำหรับงานเอกสารไทย
 
-> [!warning] ปัญหา environment: port 2024 ใช้ไม่ได้ถาวร
-> เจอ ghost process ค้างใน TCP table ของเครื่องที่ฆ่าไม่ตาย ตอนนี้ใช้ port 2777 แทนชั่วคราว (`langgraph dev --port 2777`)
-> - [ ] ลอง restart เครื่อง (Windows) ดูว่า TCP table เคลียร์หรือไม่
-> - [ ] ถ้ายังไม่หาย ให้ใช้ port อื่นที่ไม่เคยใช้มาก่อนทุกครั้งที่ restart server (อย่าใช้ port ซ้ำ)
->
-> 2026-09-17 (เครื่อง KCG): เจออาการเดียวกันแต่รู้สาเหตุแล้ว — server ตัวเก่ายังไม่ตาย และ Windows ยอมให้ server ตัวใหม่ bind พอร์ต 2024 ซ้ำได้ request เลยยังวิ่งไปตัวเก่า server ที่ "restart แล้ว" จึงยังรันโค้ดเดิม
-> - เช็คก่อนเทสต์ทุกครั้ง: `netstat -ano | findstr :2024` ต้องมีบรรทัด `LISTENING` แค่บรรทัดเดียว
+> [!note] port 2024 — 2026-09-28 ใช้ได้ปกติแล้ว (แต่ยังต้องเช็คก่อนเทสต์)
+> เครื่องนี้ (Amaya) ตอนนี้ port 2024 ว่างสะอาด ghost entry หายไปแล้ว (น่าจะเพราะ restart เครื่อง) `langgraph dev --no-browser --port 2024` ขึ้นปกติ มี `LISTENING` แค่บรรทัดเดียว **ไม่ต้องใช้ port 2777 แล้ว**
+> - ยังควรเช็คก่อนเทสต์ทุกครั้ง: `netstat -ano | findstr :2024` ต้องมีบรรทัด `LISTENING` แค่บรรทัดเดียว
 > - ถ้ามีเกิน ให้ฆ่าทั้ง tree จาก process แม่ (`taskkill /PID <pid> /T /F`) ฆ่าแค่ตัวลูกไม่พอ
-> - `langgraph dev` บนเครื่องนี้ไม่ reload เองเมื่อแก้ไฟล์ใน `src/` ต้อง restart ทุกครั้งหลังแก้โค้ด
+> - `langgraph dev` ไม่ reload เองเมื่อแก้ไฟล์ใน `src/` ต้อง restart ทุกครั้งหลังแก้โค้ด
+>
+> 2026-09-17 (เครื่อง KCG): server ตัวเก่ายังไม่ตาย และ Windows ยอมให้ตัวใหม่ bind พอร์ตซ้ำได้ request เลยยังวิ่งไปตัวเก่า server ที่ "restart แล้ว" จึงยังรันโค้ดเดิม
+
+> [!warning] ถ้า `langgraph dev` ขึ้นไม่ได้และฟ้อง `.langgraph_retry_counter.pckl` — ลบโฟลเดอร์ `.langgraph_api/`
+> 2026-09-28: เจอ startup ตายด้วย `FileNotFoundError: '.langgraph_api\.langgraph_retry_counter.pckl'` → `Application startup failed. Exiting.` พร้อมกับ watchfiles ยัง reload ต่อ ทำให้ดูเหมือน server รันอยู่แต่ตอบอะไรไม่ได้ (คนละเรื่องกับปัญหา port ด้านบน แต่มีอาการคล้ายกันจนสับสนได้)
+> - สาเหตุคือบั๊กใน `langgraph_runtime_inmem/database.py`: cache เก่าโหลดไม่ได้ → โค้ดกู้คืนสั่ง `os.remove()` ทั้งไฟล์ ops และไฟล์ retry counter แต่ไม่เช็คว่ามีอยู่จริง ตัวที่ไม่มีจึงทำให้ทั้ง startup ตาย
+> - แก้ง่ายๆ: ลบ `.langgraph_api/` แล้วสตาร์ตใหม่ (เป็นแค่ cache ไม่มีข้อมูลธุรกิจ — ข้อมูลจริงอยู่ใน `data/quotes.db`) และ `.langgraph_api/` อยู่ใน `.gitignore` แล้ว
+> - บน console ภาษาไทย/Windows ให้สตาร์ตด้วย `PYTHONIOENCODING=utf-8` ด้วย ไม่งั้น log จะพ่น `UnicodeEncodeError` (cp1252) รัวๆ กลบ error จริง
 
 > [!warning] `uv sync` ใช้ไม่ได้บนเครื่อง KCG
 > 2026-09-21: `uv sync` ล้มตอนสร้าง `jsonschema-rs` (dev dependency ที่มาจาก `langgraph-cli[inmem]`) เพราะต้องคอมไพล์ Rust แล้ว linker บนเครื่องนี้ error
@@ -101,12 +129,16 @@ tags:
 ## คำสั่งอ้างอิงเร็วๆ
 
 ```powershell
-# รัน server (ใช้ port 2777 เพราะ 2024 มีปัญหา)
+# รัน server (port 2024 ใช้ได้แล้ว ตั้ง UTF-8 กัน log พ่น error ภาษาไทย)
 cd C:\Users\Amaya\Desktop\agent\my-agent-app
-langgraph dev --no-browser --port 2777
+$env:PYTHONIOENCODING = "utf-8"
+langgraph dev --no-browser --port 2024
 
-# รัน unit tests
-python -m pytest tests/unit_tests/ -v
+# รันเทสต์ทั้งหมด (unit + integration)
+python -m pytest tests/ -v
+
+# รัน Playwright (ต้องมี server รันอยู่ก่อน)
+cd playwright; npx playwright test
 
 # สร้างไฟล์ demo ใหม่ (ถ้าลบไปแล้ว)
 python scripts/generate_form_demo.py

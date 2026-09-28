@@ -1,0 +1,80 @@
+{
+  "date": "2026-09-28",
+  "timestamp": "2026-09-28T07:03:52.136944+00:00",
+  "label": "Ollama unblocked; whitespace heuristic fix",
+  "totals": {
+    "tests": 45,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 45
+  },
+  "duration_seconds": 13.27,
+  "suites": [
+    {
+      "name": "tests/integration_tests/test_graph.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 1.85
+    },
+    {
+      "name": "tests/integration_tests/test_pdf_graph.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.08
+    },
+    {
+      "name": "tests/integration_tests/test_quote_to_form.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 2.64
+    },
+    {
+      "name": "tests/unit_tests/test_configuration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/unit_tests/test_form_filling.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.03
+    },
+    {
+      "name": "tests/unit_tests/test_pdf_extraction.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 6.23
+    },
+    {
+      "name": "tests/unit_tests/test_pdf_graph_configuration.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/unit_tests/test_quote_extraction.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.0
+    },
+    {
+      "name": "tests/unit_tests/test_quote_storage.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 0.08
+    }
+  ],
+  "skips": [],
+  "failures": []
+}
