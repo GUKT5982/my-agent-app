@@ -118,6 +118,29 @@ def test_extract_embedded_text_pdf() -> None:
     assert "Hello World" in result.text
 
 
+def test_extract_space_padded_table_keeps_its_embedded_text() -> None:
+    # Column-aligned documents pad each row with runs of spaces, so a page can
+    # be more than half whitespace while every visible character is clean text.
+    # Counting that padding against the text layer sent such pages to OCR,
+    # which returned a fraction of the content (and, for non-Latin scripts
+    # under an English model, transliterated garbage) with no warning.
+    row = "1     Widget, large        12      1,250.00      15,000.00"
+    pdf_bytes = _make_pdf(with_text="\n".join([row] * 6))
+    result = extract_pdf_text(pdf_bytes)
+    assert result.error is None
+    assert result.pages[0].method == "embedded_text"
+    assert "Widget, large" in result.text
+
+
+@requires_tesseract
+def test_extract_garbled_text_layer_still_falls_back_to_ocr() -> None:
+    # The ratio must still reject a text layer whose visible characters are
+    # mostly punctuation/symbols rather than readable text.
+    pdf_bytes = _make_pdf(with_text="!@#$%^&*()_+{}|:<>?~`-=[]\\;',./" * 3)
+    result = extract_pdf_text(pdf_bytes)
+    assert result.pages[0].method == "ocr"
+
+
 def test_extract_page_with_rotate_metadata_still_uses_embedded_text() -> None:
     pdf_bytes = _make_pdf(
         with_text="Rotated metadata but real text layer.", rotation=180
