@@ -77,6 +77,8 @@ tags:
 > [!success] Git / Pull Request
 > - งานทั้งหมดทำบน branch `feature/pdf-extraction-and-quote-to-form` (ไม่แตะ `master` โดยตรง)
 > - 2026-09-21: **[PR #1](https://github.com/GUKT5982/my-agent-app/pull/1) merge เข้า `master` แล้ว** ด้วย merge commit `dfca519` — commit ทั้ง 14 ตัวยังอยู่ครบพร้อมวันที่เดิม branch เดิมยังไม่ได้ลบ
+> - 2026-09-28: งานแก้บั๊ก heuristic + scoreboard อยู่ใน branch `fix/embedded-text-heuristic-whitespace` เปิดเป็น **[PR #3](https://github.com/GUKT5982/my-agent-app/pull/3)** (แยก branch ใหม่จาก `master` เพราะ PR #1 merge ไปแล้ว) — รอ review/merge
+> - **[PR #2](https://github.com/GUKT5982/my-agent-app/pull/2)** (`fix/ci-uv-sync-and-blank-form`) ยังเปิดค้างอยู่ ยังไม่ merge
 
 > [!tip] ทำไม contribution graph ถึงไม่ขึ้น (และวิธีแก้)
 > 2026-09-21: กราฟบนโปรไฟล์ GitHub ไม่ขึ้นสีตามวันที่ทำงาน ทั้งที่ commit ครบ — **GitHub นับเฉพาะ commit ที่อยู่บน default branch (`master`) เท่านั้น** commit บน branch อื่นไม่นับจนกว่าจะ merge และการเปิด PR ค้างไว้เฉยๆ ก็ไม่นับ
