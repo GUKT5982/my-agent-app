@@ -25,9 +25,12 @@ from PIL import Image
 # instead of falling back to OCR. Pages below this are treated as scanned.
 DEFAULT_MIN_CHARS_PER_PAGE = 20
 
-# Minimum fraction of alphanumeric characters an embedded text layer must
-# have to be trusted. Guards against garbled/mis-encoded text layers that
-# technically contain characters but are not readable text.
+# Minimum fraction of a text layer's *visible* (non-whitespace) characters
+# that must be alphanumeric for it to be trusted. Guards against
+# garbled/mis-encoded text layers that technically contain characters but are
+# not readable text. Whitespace is excluded from the ratio because it is
+# layout, not content: column-aligned documents pad rows with runs of spaces,
+# and counting those against the text sends clean tabular pages to OCR.
 DEFAULT_MIN_ALPHA_RATIO = 0.5
 
 # Minimum Tesseract orientation-detection confidence required before a
@@ -101,7 +104,8 @@ def extract_pdf_text(
         lang: Tesseract language code(s) to use for OCR.
         zoom: Render zoom factor used when rasterizing scanned pages.
         min_chars_per_page: Minimum embedded-text length to trust it over OCR.
-        min_alpha_ratio: Minimum alphanumeric ratio to trust embedded text.
+        min_alpha_ratio: Minimum alphanumeric share of an embedded text
+            layer's visible (non-whitespace) characters to trust it.
         min_osd_confidence: Minimum OSD confidence to apply a rotation fix.
         enable_deskew: Whether to attempt fine-angle deskewing after coarse
             90/180/270 rotation correction.
@@ -252,9 +256,9 @@ def _page_has_usable_text(
     stripped = raw.strip()
     if len(stripped) < min_chars_per_page:
         return False, ""
+    visible = sum(1 for c in stripped if not c.isspace())
     alnum_count = sum(1 for c in stripped if c.isalnum())
-    alnum_ratio = alnum_count / len(stripped)
-    if alnum_ratio < min_alpha_ratio:
+    if alnum_count / visible < min_alpha_ratio:
         return False, ""
     return True, raw
 
