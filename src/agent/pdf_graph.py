@@ -137,7 +137,19 @@ async def fill_form_node(
     ``static/field-mapper/`` when the template's field names don't line up
     with ours on their own ("qty1" vs "item_1_qty"). Without it, filling
     falls back to plain name matching as before.
+
+    If field extraction failed, no form is returned at all: a blank form
+    that looks "filled" is worse than none, since nothing else in the
+    response says the values are missing.
     """
+    extraction_error = state.extracted_fields.get("error")
+    if extraction_error:
+        return {
+            "fill_warnings": [
+                f"Form not filled because quote extraction failed: {extraction_error}"
+            ]
+        }
+
     context = runtime.context or {}
     try:
         form_bytes = base64.b64decode(state.form_template_base64, validate=True)
